@@ -8,24 +8,13 @@ export const ScoreEntryPage = () => {
   const { pools, poolMatches, teams } = useTournamentStore();
   const [isLoading, setIsLoading] = useState(true);
 
-  // On attend 1,5 seconde pour laisser Supabase charger les données
+  // On attend 2,5 secondes pour laisser le temps à Supabase de répondre
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 1500);
+    }, 2500);
     return () => clearTimeout(timer);
   }, []);
-
-  // Si les données sont toujours vides après l'attente
-  if (!isLoading && pools.length === 0) {
-    return (
-      <div className="min-h-screen bg-bowling-dark p-8 text-center flex flex-col items-center justify-center">
-        <h1 className="text-white text-xl font-bold mb-4">Aucune poule trouvée</h1>
-        <p className="text-slate-400 mb-6">Les données du tournoi ne sont pas encore disponibles.</p>
-        <button onClick={() => window.location.reload()} className="btn btn-primary">Actualiser</button>
-      </div>
-    );
-  }
 
   // Écran de chargement
   if (isLoading) {
@@ -37,9 +26,27 @@ export const ScoreEntryPage = () => {
     );
   }
 
+  // Si après 2,5 secondes, il n'y a toujours aucune poule
+  if (pools.length === 0) {
+    return (
+      <div className="min-h-screen bg-bowling-dark p-8 text-center flex flex-col items-center justify-center">
+        <h1 className="text-white text-xl font-bold mb-4">Aucune poule trouvée</h1>
+        <p className="text-slate-400 mb-6">Les données du tournoi ne sont pas encore disponibles. Avez-vous lancé le tournoi sur l'ordinateur principal ?</p>
+        <button onClick={() => window.location.reload()} className="btn btn-primary">Actualiser la page</button>
+      </div>
+    );
+  }
+
   const pool = pools.find(p => p.id === poolId);
   
-  if (!pool) return <div className="p-8 text-center text-white">Poule introuvable (ID invalide).</div>;
+  if (!pool) {
+    return (
+      <div className="min-h-screen bg-bowling-dark p-8 text-center flex flex-col items-center justify-center">
+        <h1 className="text-white text-xl font-bold mb-4">Poule introuvable</h1>
+        <p className="text-slate-400">Cette poule n'existe pas ou a été supprimée.</p>
+      </div>
+    );
+  }
 
   const matches = poolMatches.filter(m => m.poolId === poolId);
 

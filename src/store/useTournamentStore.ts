@@ -45,6 +45,22 @@ export const useTournamentStore = create<TournamentState>()(
         })
         .subscribe();
 
+      // 👇 NOUVELLE FONCTION : Charger les données au démarrage 👇
+      const fetchInitialState = async () => {
+        const { data, error } = await supabase
+          .from('tournament_sync')
+          .select('state')
+          .eq('id', 'current_tournament')
+          .single();
+          
+        if (!error && data && data.state) {
+          set((state) => ({ ...state, ...data.state }));
+        }
+      };
+
+      // On l'appelle immédiatement
+      fetchInitialState();
+
       return {
         teams: [],
         pools: [],
