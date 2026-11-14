@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTournamentStore } from '../store/useTournamentStore';
 import { roundName } from '../utils/tournamentLogic';
-import type { Bracket, BracketMatch } from '../types';
+import type { Bracket, BracketMatch, Target } from '../types';
 import { ScoreInput } from '../components/ScoreInput';
 import { Button } from '../components/Button';
 
@@ -82,9 +82,11 @@ interface MatchCardProps {
   isEditMode: boolean;
   selectedSlot: { brKey: string; idx: number } | null;
   onSelectSlot: (brKey: 'main' | 'cons', idx: number) => void;
+  targets: Target[];
+  assignTarget: (targetId: string, matchId: string | null) => void;
 }
 
-const MatchCard = ({ match, matchNumber, roundIndex, totalRounds, brKey, isEditMode, selectedSlot, onSelectSlot }: MatchCardProps) => {
+const MatchCard = ({ match, matchNumber, roundIndex, totalRounds, brKey, isEditMode, selectedSlot, onSelectSlot, targets, assignTarget }: MatchCardProps) => {
   const { teams } = useTournamentStore();
   const colorClass = getRoundColor(roundIndex, totalRounds);
   const canEdit = isEditMode && roundIndex === 0 && !match.done;
@@ -95,12 +97,38 @@ const MatchCard = ({ match, matchNumber, roundIndex, totalRounds, brKey, isEditM
   const isSelA = canEdit && selectedSlot?.brKey === brKey && selectedSlot?.idx === slotA;
   const isSelB = canEdit && selectedSlot?.brKey === brKey && selectedSlot?.idx === slotB;
 
+  // On cherche si ce match est assigné à une cible
+  const currentTarget = targets.find(t => t.matchId === match.id);
+  const canAssignTarget = match.a && match.b && !match.done && !isEditMode;
+
   return (
     <div className={`relative p-2 rounded border ${colorClass} transition-all ${canEdit ? 'hover:border-bowling-neon cursor-pointer' : ''}`}>
-      <div className="text-[10px] text-slate-400 font-bold uppercase mb-1 flex justify-between">
-        <span>Match {matchNumber}</span>
-        {canEdit && <span className="text-bowling-neon">✏ Modifiable</span>}
-        {match.bye && <span className="text-green-400">BYE</span>}
+      
+      {/* En-tête de la carte : Match X + Attribution Cible */}
+      <div className="flex justify-between items-center mb-1">
+        <div className="text-[10px] text-slate-400 font-bold uppercase">
+          Match {matchNumber}
+          {canEdit && <span className="text-bowling-neon ml-2">✏</span>}
+          {match.bye && <span className="text-green-400 ml-2">BYE</span>}
+        </div>
+
+        {/* Menu déroulant d'attribution de cible */}
+        {canAssignTarget ? (
+          <select
+            value={currentTarget?.id || ""}
+            onChange={(e) => assignTarget(e.target.value, match.id)}
+            className={`text-[10px] font-bold px-1.5 py-0.5 rounded border cursor-pointer outline-none ${currentTarget ? 'bg-bowling-pink/20 text-bowling-pink border-bowling-pink/50' : 'bg-black/30 text-slate-400 border-bowling-line hover:border-bowling-neon hover:text-white'}`}
+          >
+            <option value="">-- Cible --</option>
+            {targets.map(t => (
+              <option key={t.id} value={t.id}>Cible {t.label}</option>
+            ))}
+          </select>
+        ) : currentTarget ? (
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-bowling-pink/20 text-bowling-pink border border-bowling-pink/50">
+            🎯 Cible {currentTarget.label}
+          </span>
+        ) : null}
       </div>
       
       <div 
@@ -126,10 +154,12 @@ const MatchCard = ({ match, matchNumber, roundIndex, totalRounds, brKey, isEditM
   );
 };
 
-const BracketView = ({ bracket, brKey, isEditMode, selectedSlot, onSelectSlot }: { 
+const BracketView = ({ bracket, brKey, isEditMode, selectedSlot, onSelectSlot, targets, assignTarget }: { 
   bracket: Bracket; brKey: 'main' | 'cons'; isEditMode: boolean; 
   selectedSlot: { brKey: string; idx: number } | null; 
   onSelectSlot: (brKey: 'main' | 'cons', idx: number) => void;
+  targets: Target[];
+  assignTarget: (targetId: string, matchId: string | null) => void;
 }) => {
   return (
     <div className="panel overflow-hidden mb-12">
@@ -140,7 +170,7 @@ const BracketView = ({ bracket, brKey, isEditMode, selectedSlot, onSelectSlot }:
 
       <div className="flex gap-8 overflow-x-auto pb-6">
         {bracket.rounds.map((round, ri) => (
-          <div key={ri} className="flex flex-col gap-4 min-w-[220px]">
+          <div key={ri} className="flex flex-col gap-4 min-w-[230px]"> {/* Un peu plus large pour le select */}
             <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider text-center border-b border-bowling-line pb-2 mb-2">
               {roundName(ri, bracket.rounds.length)}
             </h4>
@@ -158,6 +188,8 @@ const BracketView = ({ bracket, brKey, isEditMode, selectedSlot, onSelectSlot }:
                       isEditMode={isEditMode}
                       selectedSlot={selectedSlot}
                       onSelectSlot={onSelectSlot}
+                      targets={targets}
+                      assignTarget={assignTarget}
                     />
                   </div>
                 );
@@ -171,7 +203,7 @@ const BracketView = ({ bracket, brKey, isEditMode, selectedSlot, onSelectSlot }:
 };
 
 export const FinalsPage = () => {
-  const { mainBracket, consBracket, swapBracketSlots } = useTournamentStore();
+  const { mainBracket, consBracket, swapBracketSlots, targets, assignTarget } = useTournamentStore();
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ brKey: string; idx: number } | null>(null);
 
@@ -234,6 +266,8 @@ export const FinalsPage = () => {
               isEditMode={isEditMode} 
               selectedSlot={selectedSlot} 
               onSelectSlot={handleSelectSlot} 
+              targets={targets}
+              assignTarget={assignTarget}
             />
           </div>
         )}
@@ -248,6 +282,8 @@ export const FinalsPage = () => {
               isEditMode={isEditMode} 
               selectedSlot={selectedSlot} 
               onSelectSlot={handleSelectSlot} 
+              targets={targets}
+              assignTarget={assignTarget}
             />
           </div>
         )}

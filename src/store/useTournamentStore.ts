@@ -25,7 +25,7 @@ const DEFAULT_CONFIG = {
 export const useTournamentStore = create<TournamentState>()(
   persist(
     (set, get) => {
-      // Fonction pour pousser l'état vers Supabase
+            // Fonction pour pousser l'état vers Supabase
       const syncToSupabase = async () => {
         const state = get();
         const dataToSync = {
@@ -33,7 +33,8 @@ export const useTournamentStore = create<TournamentState>()(
           mainBracket: state.mainBracket, consBracket: state.consBracket,
           targets: state.targets, config: state.config, manualQualification: state.manualQualification
         };
-        await supabase.from('tournament_sync').upsert({ id: 'current_tournament', state: dataToSync });
+        const { error } = await supabase.from('tournament_sync').upsert({ id: 'current_tournament', state: dataToSync });
+        if (error) console.error("❌ ERREUR SUPABASE SYNC:", error.message);
       };
 
       // Écouteur pour recevoir les modifications depuis Supabase
@@ -51,12 +52,13 @@ export const useTournamentStore = create<TournamentState>()(
           .from('tournament_sync')
           .select('state')
           .eq('id', 'current_tournament')
-          .single();
+          .maybeSingle(); // 👈 ICI AUSSI
           
         if (!error && data && data.state) {
           set((state) => ({ ...state, ...data.state }));
         }
       };
+      
 
       // On l'appelle immédiatement
       fetchInitialState();
@@ -268,18 +270,32 @@ export const useTournamentStore = create<TournamentState>()(
           syncToSupabase();
         },
 
-        commitScore: (matchId, sa, sb) => {
+          commitScore: (matchId, sa, sb) => {
           if (sa === sb) return;
           set((state) => {
+            // 1. On met à jour le match dans les poules
             const newPoolMatches = state.poolMatches.map(m => m.id === matchId ? { ...m, sa, sb, done: true } : m);
-            if (newPoolMatches.some(m => m.id === matchId)) return { poolMatches: newPoolMatches };
+            
+            // 2. On libère la cible associée à ce match (si elle existe)
+            const newTargets = state.targets.map(t => t.matchId === matchId ? { ...t, matchId: null } : t);
 
+            // Si c'était un match de poule
+            if (newPoolMatches.some(m => m.id === matchId)) {
+              return { poolMatches: newPoolMatches, targets: newTargets };
+            }
+
+            // Si c'était un match de tableau (principal ou consolante)
             const updateBracket = (br: Bracket | null) => {
               if (!br) return null;
               const scores = { ...br.scores, [matchId]: { sa, sb } };
               return rebuildBracket({ ...br, scores });
             };
-            return { mainBracket: updateBracket(state.mainBracket), consBracket: updateBracket(state.consBracket) };
+            
+            return { 
+              mainBracket: updateBracket(state.mainBracket), 
+              consBracket: updateBracket(state.consBracket),
+              targets: newTargets // 👈 On met à jour les cibles ici aussi
+            };
           });
           syncToSupabase();
         },
@@ -382,9 +398,12 @@ export const useTournamentStore = create<TournamentState>()(
             mainBracket: null, consBracket: null,
             targets: newTargets, config: { ...config, targetCount: 6 }, manualQualification: {}
           };
-          supabase.from('tournament_sync').upsert({ id: 'current_tournament', state: dataToSync });
+          supabase.from('tournament_sync').upsert({ id: 'current_tournament', state: dataToSync })
+            .then(({ error }) => {
+              if (error) console.error("❌ ERREUR DEMO SYNC:", error.message);
+              else console.log("✅ Démo synchronisée avec Supabase !");
+            });
         },
-
         resetTournament: () => {
           set({
             teams: [], pools: [], poolMatches: [], mainBracket: null, consBracket: null,

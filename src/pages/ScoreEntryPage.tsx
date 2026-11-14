@@ -9,28 +9,25 @@ export const ScoreEntryPage = () => {
   const { pools, poolMatches, teams } = useTournamentStore();
   const [status, setStatus] = useState("Connexion à Supabase...");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [rawData, setRawData] = useState<any>(null);
 
   useEffect(() => {
     const testConnection = async () => {
       try {
-        // On teste directement la connexion à Supabase
         const { data, error } = await supabase
           .from('tournament_sync')
           .select('*')
           .eq('id', 'current_tournament')
-          .single();
+          .maybeSingle();
 
         if (error) {
           setErrorMsg("Erreur Supabase : " + error.message);
           setStatus("Échec de la connexion");
         } else if (!data || !data.state) {
-          setErrorMsg("La table existe, mais elle est vide. Avez-vous lancé le tournoi sur le PC ?");
+          setErrorMsg("La table existe, mais elle est vide. Lancez le tournoi sur le PC !");
           setStatus("Données vides");
         } else {
           setStatus("Données reçues !");
-          setRawData(data.state);
-          // On force la mise à jour du store local
+          // On force la mise à jour du store local avec les données de Supabase
           useTournamentStore.setState(data.state);
         }
       } catch (err: any) {
