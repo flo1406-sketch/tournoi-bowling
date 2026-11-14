@@ -1,49 +1,85 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTournamentStore } from '../store/useTournamentStore';
+import { supabase } from '../lib/supabase';
 import { ScoreInput } from '../components/ScoreInput';
 
 export const ScoreEntryPage = () => {
   const { poolId } = useParams();
   const { pools, poolMatches, teams } = useTournamentStore();
-  const [isLoading, setIsLoading] = useState(true);
+  const [status, setStatus] = useState("Connexion à Supabase...");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [rawData, setRawData] = useState<any>(null);
 
-  // On attend 2,5 secondes pour laisser le temps à Supabase de répondre
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2500);
-    return () => clearTimeout(timer);
+    const testConnection = async () => {
+      try {
+        // On teste directement la connexion à Supabase
+        const { data, error } = await supabase
+          .from('tournament_sync')
+          .select('*')
+          .eq('id', 'current_tournament')
+          .single();
+
+        if (error) {
+          setErrorMsg("Erreur Supabase : " + error.message);
+          setStatus("Échec de la connexion");
+        } else if (!data || !data.state) {
+          setErrorMsg("La table existe, mais elle est vide. Avez-vous lancé le tournoi sur le PC ?");
+          setStatus("Données vides");
+        } else {
+          setStatus("Données reçues !");
+          setRawData(data.state);
+          // On force la mise à jour du store local
+          useTournamentStore.setState(data.state);
+        }
+      } catch (err: any) {
+        setErrorMsg("Erreur critique : " + err.message);
+        setStatus("Erreur");
+      }
+    };
+
+    testConnection();
   }, []);
 
-  // Écran de chargement
-  if (isLoading) {
+  // Écran de chargement / Erreur
+  if (status !== "Données reçues !") {
     return (
-      <div className="min-h-screen bg-bowling-dark flex flex-col items-center justify-center">
-        <div className="w-12 h-12 border-4 border-bowling-neon border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-bowling-neon font-bold animate-pulse">Connexion au tournoi...</p>
+      <div className="min-h-screen bg-bowling-dark p-6 flex flex-col items-center justify-center text-center">
+        <div className="w-12 h-12 border-4 border-bowling-neon border-t-transparent rounded-full animate-spin mb-6"></div>
+        <h1 className="text-white text-xl font-bold mb-2">{status}</h1>
+        
+        {errorMsg && (
+          <div className="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg mt-4 text-sm max-w-md">
+            {errorMsg}
+          </div>
+        )}
+
+        <button onClick={() => window.location.reload()} className="btn btn-primary mt-8">
+          Réessayer
+        </button>
+        
+        <div className="mt-8 text-xs text-slate-500">
+          ID de la poule demandée : {poolId}
+        </div>
       </div>
     );
   }
 
-  // Si après 2,5 secondes, il n'y a toujours aucune poule
-  if (pools.length === 0) {
-    return (
-      <div className="min-h-screen bg-bowling-dark p-8 text-center flex flex-col items-center justify-center">
-        <h1 className="text-white text-xl font-bold mb-4">Aucune poule trouvée</h1>
-        <p className="text-slate-400 mb-6">Les données du tournoi ne sont pas encore disponibles. Avez-vous lancé le tournoi sur l'ordinateur principal ?</p>
-        <button onClick={() => window.location.reload()} className="btn btn-primary">Actualiser la page</button>
-      </div>
-    );
-  }
-
+  // Vérification de la poule
   const pool = pools.find(p => p.id === poolId);
-  
   if (!pool) {
     return (
-      <div className="min-h-screen bg-bowling-dark p-8 text-center flex flex-col items-center justify-center">
-        <h1 className="text-white text-xl font-bold mb-4">Poule introuvable</h1>
-        <p className="text-slate-400">Cette poule n'existe pas ou a été supprimée.</p>
+      <div className="min-h-screen bg-bowling-dark p-6 text-center">
+        <h1 className="text-white text-xl font-bold mb-4 text-red-400">Poule introuvable dans les données</h1>
+        <p className="text-slate-400 mb-4">Le téléphone a bien reçu les données de Supabase, mais il ne trouve pas de poule avec l'ID : <b>{poolId}</b></p>
+        
+        <div className="bg-black/50 p-4 rounded text-left text-xs text-slate-300 overflow-auto max-h-64 mb-6">
+          <p className="font-bold mb-2">Poules reçues :</p>
+          {pools.map(p => <div key={p.id}>- {p.id} ({p.name})</div>)}
+        </div>
+
+        <Link to="/" className="btn btn-primary">Retour</Link>
       </div>
     );
   }
