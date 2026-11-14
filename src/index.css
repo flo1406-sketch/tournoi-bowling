@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bowling-dark text-slate-200 min-h-screen overflow-x-hidden;
+    background-image: radial-gradient(ellipse 1000px 800px at 50% -20%, #1e2e52 0%, #0a0f1c 70%);
+  }
+}
+
+@layer components {
+  .btn {
+    @apply font-bold text-sm px-4 py-2 rounded-lg border border-bowling-line bg-bowling-panel text-slate-200 transition-all hover:-translate-y-0.5 hover:border-bowling-neon hover:shadow-[0_0_12px_rgba(0,243,255,0.3)];
+  }
+  .btn-primary {
+    @apply bg-gradient-to-b from-cyan-400 to-cyan-600 border-cyan-300 text-slate-900 hover:shadow-[0_0_20px_rgba(0,243,255,0.6)];
+  }
+  .input-field {
+    @apply bg-bowling-dark text-slate-200 border border-bowling-line rounded-lg px-3 py-2 outline-none focus:border-bowling-neon focus:shadow-[0_0_10px_rgba(0,243,255,0.2)] transition-all;
+  }
+  .panel {
+    @apply bg-bowling-panel border border-bowling-line rounded-xl p-5 shadow-2xl;
+  }
+  .badge-team {
+    @apply inline-flex items-center justify-center min-w-[24px] h-[22px] px-1.5 rounded bg-pink-900/30 border border-pink-500/40 text-bowling-pink text-xs font-black;
+  }
+}
