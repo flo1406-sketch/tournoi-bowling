@@ -3,32 +3,15 @@ import { Button } from '../components/Button';
 import { ScoreInput } from '../components/ScoreInput';
 
 export const TargetsPage = () => {
-  const { targets, pools, poolMatches, mainBracket, consBracket, teams, assignTarget, addTarget } = useTournamentStore();
+  const { targets, pools, poolMatches, mainBracket, consBracket, teams, assignTarget, addTarget, autoAssignTargets } = useTournamentStore();
 
-  // Récupérer tous les matchs non terminés avec le nom précis de la poule
   const pendingMatches = [
     ...poolMatches.filter(m => !m.done).map(m => {
-      // On cherche le nom de la poule correspondante
       const pool = pools.find(p => p.id === m.poolId);
-      return { 
-        id: m.id, 
-        label: pool ? pool.name : 'Poule inconnue', // 👈 Affiche "Poule A", "Poule B", etc.
-        a: m.a, 
-        b: m.b 
-      };
+      return { id: m.id, label: pool ? pool.name : 'Poule inconnue', a: m.a, b: m.b };
     }),
-    ...(mainBracket?.rounds.flat().filter(m => !m.done && m.a && m.b).map(m => ({ 
-      id: m.id, 
-      label: 'Principal', 
-      a: m.a!, 
-      b: m.b! 
-    })) || []),
-    ...(consBracket?.rounds.flat().filter(m => !m.done && m.a && m.b).map(m => ({ 
-      id: m.id, 
-      label: 'Consolante', 
-      a: m.a!, 
-      b: m.b! 
-    })) || []),
+    ...(mainBracket?.rounds.flat().filter(m => !m.done && m.a && m.b).map(m => ({ id: m.id, label: 'Principal', a: m.a!, b: m.b! })) || []),
+    ...(consBracket?.rounds.flat().filter(m => !m.done && m.a && m.b).map(m => ({ id: m.id, label: 'Consolante', a: m.a!, b: m.b! })) || []),
   ];
 
   const getMatchById = (id: string) => {
@@ -42,54 +25,13 @@ export const TargetsPage = () => {
   const getTeamName = (id: string) => teams.find(t => t.id === id)?.name || '?';
   const getTeamNumber = (id: string) => teams.findIndex(t => t.id === id) + 1;
 
-  // Fonction d'affectation optimisée
-    // 👇 REMPLACE LA FONCTION handleAutoAssign PAR CELLE-CI 👇
-  const handleAutoAssign = () => {
-    const freeTargets = targets.filter(t => !t.matchId);
-    if (freeTargets.length === 0) return;
-
-    // 1. Identifier les joueurs déjà occupés sur les cibles ACTUELLES
-    const busyPlayerIds = new Set<string>();
-    const busyMatchIds = new Set<string>();
-
-    targets.forEach(t => {
-      if (t.matchId) {
-        busyMatchIds.add(t.matchId); // Ce match est déjà quelque part
-        const match = pendingMatches.find(pm => pm.id === t.matchId);
-        if (match) {
-          busyPlayerIds.add(match.a);
-          busyPlayerIds.add(match.b);
-        }
-      }
-    });
-
-    // 2. Filtrer les matchs disponibles (ni joueur occupé, ni match déjà placé)
-    const availableMatches = pendingMatches.filter(pm => 
-      !busyPlayerIds.has(pm.a) && 
-      !busyPlayerIds.has(pm.b) && 
-      !busyMatchIds.has(pm.id) // 👈 On vérifie via notre Set local !
-    );
-
-    // 3. Assigner les matchs aux cibles libres
-    freeTargets.forEach((target, idx) => {
-      const match = availableMatches[idx];
-      if (match) {
-        assignTarget(target.id, match.id);
-        // 👇 IMPORTANT : On l'ajoute à notre Set local pour ne pas le remettre sur la cible suivante
-        busyMatchIds.add(match.id); 
-        busyPlayerIds.add(match.a);
-        busyPlayerIds.add(match.b);
-      }
-    });
-  };
-
   return (
     <div className="space-y-6">
-      {/* En-tête */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <h2 className="text-2xl font-bold">Attribution des cibles ({targets.length})</h2>
         <div className="flex gap-3 flex-wrap">
-          <Button variant="primary" onClick={handleAutoAssign}>
+          {/* 👇 On utilise la nouvelle fonction autoAssignTargets ici */}
+          <Button variant="primary" onClick={autoAssignTargets}>
             ⚡ Affectation intelligente
           </Button>
           <Button variant="ghost" onClick={() => targets.forEach(t => assignTarget(t.id, null))}>
@@ -98,13 +40,10 @@ export const TargetsPage = () => {
         </div>
       </div>
 
-      {/* Grille des cibles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {targets.map(target => {
           const match = target.matchId ? getMatchById(target.matchId) : null;
           const isBusy = match && !match.done;
-
-          // On récupère le vrai label (Poule A, Principal, etc.) pour la cible
           const matchInfo = target.matchId ? pendingMatches.find(pm => pm.id === target.matchId) : null;
 
           return (
@@ -121,7 +60,6 @@ export const TargetsPage = () => {
 
               {isBusy ? (
                 <div className="flex flex-col gap-2">
-                  {/* 👇 AFFICHAGE DU NOM DE LA POULE ICI 👇 */}
                   <div className="text-xs text-bowling-pink font-bold">
                     {matchInfo ? matchInfo.label : 'Match en cours'}
                   </div>
@@ -142,20 +80,10 @@ export const TargetsPage = () => {
                   </div>
 
                   <div className="mt-2 pt-2 border-t border-bowling-line/50 flex justify-center">
-                    <ScoreInput 
-                      matchId={match.id} 
-                      initialSa={match.sa} 
-                      initialSb={match.sb} 
-                      done={match.done} 
-                    />
+                    <ScoreInput matchId={match.id} initialSa={match.sa} initialSb={match.sb} done={match.done} />
                   </div>
 
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="w-full mt-1 text-xs" 
-                    onClick={() => assignTarget(target.id, null)}
-                  >
+                  <Button variant="ghost" size="sm" className="w-full mt-1 text-xs" onClick={() => assignTarget(target.id, null)}>
                     Libérer la cible
                   </Button>
                 </div>
@@ -177,7 +105,6 @@ export const TargetsPage = () => {
           );
         })}
 
-        {/* Carte "+" pour ajouter une cible */}
         <button 
           onClick={addTarget}
           className="panel border-2 border-dashed border-bowling-line hover:border-bowling-neon hover:bg-bowling-neon/5 transition-all flex flex-col items-center justify-center min-h-[150px] gap-2 text-slate-500 hover:text-bowling-neon"
@@ -187,29 +114,21 @@ export const TargetsPage = () => {
         </button>
       </div>
 
-      {/* File d'attente */}
       <div className="panel">
         <h3 className="text-lg font-bold mb-4">File d'attente</h3>
         {pendingMatches.filter(pm => !targets.some(t => t.matchId === pm.id)).length === 0 ? (
           <p className="text-slate-400 text-sm">Aucun match en attente.</p>
         ) : (
-            <ul className="space-y-2">
+          <ul className="space-y-2">
             {pendingMatches.filter(pm => !targets.some(t => t.matchId === pm.id)).map(pm => (
               <li key={pm.id} className="flex items-center gap-3 p-2 bg-black/20 rounded text-sm">
-                {/* Le nom de la poule */}
                 <span className="text-xs px-2 py-0.5 rounded bg-bowling-neon/20 text-bowling-neon font-bold min-w-[70px] text-center shrink-0">
                   {pm.label}
                 </span>
-                
-                {/* Les joueurs collés ensemble */}
                 <div className="flex items-center gap-2 flex-1">
-                  <span className="font-semibold text-slate-200">
-                    #{getTeamNumber(pm.a)} {getTeamName(pm.a)}
-                  </span>
+                  <span className="font-semibold text-slate-200">#{getTeamNumber(pm.a)} {getTeamName(pm.a)}</span>
                   <b className="text-slate-500 mx-1">vs</b>
-                  <span className="font-semibold text-slate-200">
-                    #{getTeamNumber(pm.b)} {getTeamName(pm.b)}
-                  </span>
+                  <span className="font-semibold text-slate-200">#{getTeamNumber(pm.b)} {getTeamName(pm.b)}</span>
                 </div>
               </li>
             ))}

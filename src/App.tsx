@@ -8,6 +8,7 @@ import { FinalsPage } from './pages/FinalsPage';
 import { TargetsPage } from './pages/TargetsPage';
 import { StatsPage } from './pages/StatsPage';
 import { ScoreEntryPage } from './pages/ScoreEntryPage';
+import { ScoreEntryFinalPage } from './pages/ScoreEntryFinalPage';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="finale" element={<FinalsPage />} />
           <Route path="cibles" element={<TargetsPage />} />
           <Route path="classement" element={<StatsPage />} />
+          <Route path="/score/final/:matchId" element={<ScoreEntryFinalPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

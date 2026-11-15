@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useTournamentStore } from '../store/useTournamentStore';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
@@ -5,8 +6,51 @@ import { Button } from '../components/Button';
 export const SettingsPage = () => {
   const { 
     config, setConfig, teams, generatePools, 
-    targets, addTarget, removeTarget, updateTargetLabel 
+    targets, addTarget, removeTarget, updateTargetLabel,
+    // On récupère tout l'état pour l'export
+    pools, poolMatches, mainBracket, consBracket, manualQualification
   } = useTournamentStore();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 👇 FONCTION D'EXPORTATION 👇
+  const handleExport = () => {
+    const stateToExport = {
+      teams, pools, poolMatches, mainBracket, consBracket, targets, config, manualQualification
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(stateToExport, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `tournoi-bowling-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  // 👇 FONCTION D'IMPORTATION 👇
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
+    if (event.target.files && event.target.files[0]) {
+      fileReader.readAsText(event.target.files[0], "UTF-8");
+      fileReader.onload = (e) => {
+        try {
+          const parsedData = JSON.parse(e.target?.result as string);
+          
+          if (!parsedData.teams || !parsedData.config) {
+            alert("Fichier invalide. Ce n'est pas une sauvegarde de tournoi.");
+            return;
+          }
+
+          if (window.confirm("⚠️ Importer cette sauvegarde va ÉCRASER le tournoi actuel. Continuer ?")) {
+            useTournamentStore.setState(parsedData);
+            alert("Sauvegarde importée avec succès !");
+          }
+        } catch (error) {
+          alert("Erreur lors de la lecture du fichier JSON.");
+        }
+      };
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -133,6 +177,32 @@ export const SettingsPage = () => {
               />
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* 👇 NOUVELLE SECTION SAUVEGARDE 👇 */}
+      <div className="panel border-l-4 border-l-bowling-neon">
+        <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
+          <span>💾</span> Sauvegarde & Restauration
+        </h2>
+        <p className="text-sm text-slate-400 mb-4">
+          Téléchargez une copie de votre tournoi sur votre appareil, ou restaurez une sauvegarde précédente.
+        </p>
+        <div className="flex gap-3 flex-wrap">
+          <Button variant="primary" onClick={handleExport}>
+            ⭳ Exporter le tournoi (JSON)
+          </Button>
+          
+          <Button variant="ghost" onClick={() => fileInputRef.current?.click()}>
+            ⭱ Importer une sauvegarde
+          </Button>
+          <input 
+            type="file" 
+            accept=".json" 
+            ref={fileInputRef} 
+            onChange={handleImport} 
+            className="hidden" 
+          />
         </div>
       </div>
 

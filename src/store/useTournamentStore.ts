@@ -10,7 +10,8 @@ import { supabase } from '../lib/supabase';
 const createTarget = (num: number): Target => ({
   id: `target-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
   label: String(num),
-  matchId: null
+  matchId: null,
+  defaultPoolId: null
 });
 
 const DEFAULT_CONFIG = {
@@ -25,19 +26,18 @@ const DEFAULT_CONFIG = {
 export const useTournamentStore = create<TournamentState>()(
   persist(
     (set, get) => {
-            // Fonction pour pousser l'état vers Supabase
       const syncToSupabase = async () => {
         const state = get();
         const dataToSync = {
           teams: state.teams, pools: state.pools, poolMatches: state.poolMatches,
           mainBracket: state.mainBracket, consBracket: state.consBracket,
-          targets: state.targets, config: state.config, manualQualification: state.manualQualification
+          targets: state.targets, config: state.config, manualQualification: state.manualQualification,
+          appTitle: state.appTitle, appSubtitle: state.appSubtitle, appLogo: state.appLogo
         };
         const { error } = await supabase.from('tournament_sync').upsert({ id: 'current_tournament', state: dataToSync });
         if (error) console.error("❌ ERREUR SUPABASE SYNC:", error.message);
       };
 
-      // Écouteur pour recevoir les modifications depuis Supabase
       supabase.channel('custom-all-channel')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'tournament_sync' }, (payload: any) => {
           if (payload.new && payload.new.state) {
@@ -46,21 +46,17 @@ export const useTournamentStore = create<TournamentState>()(
         })
         .subscribe();
 
-      // 👇 NOUVELLE FONCTION : Charger les données au démarrage 👇
       const fetchInitialState = async () => {
         const { data, error } = await supabase
           .from('tournament_sync')
           .select('state')
           .eq('id', 'current_tournament')
-          .maybeSingle(); // 👈 ICI AUSSI
+          .maybeSingle();
           
         if (!error && data && data.state) {
           set((state) => ({ ...state, ...data.state }));
         }
       };
-      
-
-      // On l'appelle immédiatement
       fetchInitialState();
 
       return {
@@ -72,13 +68,40 @@ export const useTournamentStore = create<TournamentState>()(
         targets: [1, 2, 3, 4, 5, 6].map(createTarget),
         config: { ...DEFAULT_CONFIG },
         manualQualification: {},
+        
+        // 👇 VALEURS PAR DÉFAUT DE L'EN-TÊTE 👇
+        appTitle: "Tournoi du Bowling",
+        appSubtitle: "Limoges Nord · Fléchettes",
+        appLogo: null,
 
-        addTeam: (name) => {
+        setAppTitle: (title: string) => {
+          set({ appTitle: title });
+          syncToSupabase();
+        },
+        
+        setAppSubtitle: (subtitle: string) => {
+          set({ appSubtitle: subtitle });
+          syncToSupabase();
+        },
+        
+        setAppLogo: (logo: string | null) => {
+          set({ appLogo: logo });
+          syncToSupabase();
+        },
+
+        setTargetDefaultPool: (targetId: string, poolId: string | null) => {
+          set((state) => ({
+            targets: state.targets.map(t => t.id === targetId ? { ...t, defaultPoolId: poolId } : t)
+          }));
+          syncToSupabase();
+        },
+
+        addTeam: (name: string) => {
           set((state) => ({ teams: [...state.teams, { id: crypto.randomUUID(), name: name.trim() }] }));
           syncToSupabase();
         },
 
-        removeTeam: (id) => {
+        removeTeam: (id: string) => {
           set((state) => ({
             teams: state.teams.filter(t => t.id !== id),
             pools: state.pools.map(p => ({ ...p, teamIds: p.teamIds.filter(tid => tid !== id) })),
@@ -87,7 +110,7 @@ export const useTournamentStore = create<TournamentState>()(
           syncToSupabase();
         },
 
-        moveTeam: (id, dir) => {
+        moveTeam: (id: string, dir: number) => {
           set((state) => {
             const idx = state.teams.findIndex(t => t.id === id);
             const newIdx = idx + dir;
@@ -99,7 +122,7 @@ export const useTournamentStore = create<TournamentState>()(
           syncToSupabase();
         },
 
-        setTeamNumber: (id, num) => {
+        setTeamNumber: (id: string, num: number) => {
           set((state) => {
             const fromIdx = state.teams.findIndex(t => t.id === id);
             const toIdx = Math.max(0, Math.min(state.teams.length - 1, num - 1));
@@ -112,12 +135,12 @@ export const useTournamentStore = create<TournamentState>()(
           syncToSupabase();
         },
 
-        setConfig: (key, value) => {
+        setConfig: (key: string, value: number) => {
           set((state) => ({ config: { ...state.config, [key]: value } }));
           syncToSupabase();
         },
 
-        setManualQualification: (teamId, target) => {
+        setManualQualification: (teamId: string, target: 'main' | 'cons' | null) => {
           set((state) => {
             const newMQ = { ...state.manualQualification };
             if (target) newMQ[teamId] = target;
@@ -127,7 +150,7 @@ export const useTournamentStore = create<TournamentState>()(
           syncToSupabase();
         },
 
-        movePlayerToPool: (playerId, targetPoolId) => {
+        movePlayerToPool: (playerId: string, targetPoolId: string | null) => {
           set((state) => {
             let sourcePoolId: string | null = null;
             const newPools = state.pools.map(p => {
@@ -171,7 +194,7 @@ export const useTournamentStore = create<TournamentState>()(
           syncToSupabase();
         },
 
-        removeTarget: (id) => {
+        removeTarget: (id: string) => {
           set((state) => ({
             targets: state.targets.filter(t => t.id !== id),
             config: { ...state.config, targetCount: state.targets.length - 1 }
@@ -179,12 +202,12 @@ export const useTournamentStore = create<TournamentState>()(
           syncToSupabase();
         },
 
-        updateTargetLabel: (id, label) => {
+        updateTargetLabel: (id: string, label: string) => {
           set((state) => ({ targets: state.targets.map(t => t.id === id ? { ...t, label } : t) }));
           syncToSupabase();
         },
 
-        assignTarget: (targetId, matchId) => {
+        assignTarget: (targetId: string, matchId: string | null) => {
           set((state) => ({
             targets: state.targets.map(t => {
               if (t.id === targetId) return { ...t, matchId };
@@ -195,8 +218,63 @@ export const useTournamentStore = create<TournamentState>()(
           syncToSupabase();
         },
 
+        autoAssignTargets: () => {
+        const state = get();
+        const freeTargets = state.targets.filter(t => !t.matchId);
+        if (freeTargets.length === 0) return;
+
+        const pendingMatches = [
+          ...state.poolMatches.filter(m => !m.done).map(m => ({ id: m.id, a: m.a, b: m.b })),
+          ...(state.mainBracket?.rounds.flat().filter(m => !m.done && m.a && m.b).map(m => ({ id: m.id, a: m.a!, b: m.b! })) || []),
+          ...(state.consBracket?.rounds.flat().filter(m => !m.done && m.a && m.b).map(m => ({ id: m.id, a: m.a!, b: m.b! })) || []),
+        ];
+
+        const busyPlayers = new Set<string>();
+        const busyMatchIds = new Set<string>();
+
+        state.targets.forEach(t => {
+          if (t.matchId) {
+            busyMatchIds.add(t.matchId);
+            const match = pendingMatches.find(pm => pm.id === t.matchId);
+            if (match) {
+              busyPlayers.add(match.a);
+              busyPlayers.add(match.b);
+            }
+          }
+        });
+
+        const availableMatches = pendingMatches.filter(pm => 
+          !busyPlayers.has(pm.a) && 
+          !busyPlayers.has(pm.b) && 
+          !busyMatchIds.has(pm.id)
+        );
+
+        const assignments: Record<string, string> = {};
+        let matchIndex = 0;
+
+        for (const target of freeTargets) {
+          if (matchIndex >= availableMatches.length) break;
+          const match = availableMatches[matchIndex];
+          if (!busyPlayers.has(match.a) && !busyPlayers.has(match.b)) {
+            assignments[target.id] = match.id;
+            busyPlayers.add(match.a);
+            busyPlayers.add(match.b);
+            matchIndex++;
+          }
+        }
+
+        if (Object.keys(assignments).length > 0) {
+          set((state) => ({
+            targets: state.targets.map(t => 
+              assignments[t.id] ? { ...t, matchId: assignments[t.id] } : t
+            )
+          }));
+          syncToSupabase();
+        }
+      },
+
         generatePools: () => {
-          const { teams, config } = get();
+          const { teams, config, targets } = get();
           if (teams.length < 4) return;
 
           const cible = Math.max(3, Math.min(6, config.poolSize));
@@ -221,7 +299,12 @@ export const useTournamentStore = create<TournamentState>()(
             }
           });
 
-          set({ pools: newPools, poolMatches: newMatches, mainBracket: null, consBracket: null, manualQualification: {} });
+          const updatedTargets = targets.map((t, i) => ({
+            ...t,
+            defaultPoolId: newPools[i]?.id || null
+          }));
+
+          set({ pools: newPools, poolMatches: newMatches, mainBracket: null, consBracket: null, manualQualification: {}, targets: updatedTargets });
           syncToSupabase();
         },
 
@@ -270,31 +353,127 @@ export const useTournamentStore = create<TournamentState>()(
           syncToSupabase();
         },
 
-          commitScore: (matchId, sa, sb) => {
+        commitScore: (matchId, sa, sb) => {
           if (sa === sb) return;
+          
           set((state) => {
-            // 1. On met à jour le match dans les poules
-            const newPoolMatches = state.poolMatches.map(m => m.id === matchId ? { ...m, sa, sb, done: true } : m);
-            
-            // 2. On libère la cible associée à ce match (si elle existe)
-            const newTargets = state.targets.map(t => t.matchId === matchId ? { ...t, matchId: null } : t);
+            const newPoolMatches = state.poolMatches.map(m => 
+              m.id === matchId ? { ...m, sa, sb, done: true } : m
+            );
+            const isPoolMatch = newPoolMatches.some(m => m.id === matchId);
 
-            // Si c'était un match de poule
-            if (newPoolMatches.some(m => m.id === matchId)) {
-              return { poolMatches: newPoolMatches, targets: newTargets };
+            let newMainBracket = state.mainBracket;
+            let newConsBracket = state.consBracket;
+
+            if (!isPoolMatch) {
+              const updateBracket = (br: Bracket | null) => {
+                if (!br) return null;
+                const scores = { ...br.scores, [matchId]: { sa, sb } };
+                return rebuildBracket({ ...br, scores });
+              };
+              newMainBracket = updateBracket(state.mainBracket);
+              newConsBracket = updateBracket(state.consBracket);
             }
 
-            // Si c'était un match de tableau (principal ou consolante)
-            const updateBracket = (br: Bracket | null) => {
-              if (!br) return null;
-              const scores = { ...br.scores, [matchId]: { sa, sb } };
-              return rebuildBracket({ ...br, scores });
-            };
-            
+            const currentTarget = state.targets.find(t => t.matchId === matchId);
+            let newTargets = [...state.targets];
+
+            if (currentTarget) {
+              if (isPoolMatch) {
+                const finishedMatch = newPoolMatches.find(m => m.id === matchId);
+                if (finishedMatch && finishedMatch.poolId) {
+                  const busyPlayers = new Set<string>();
+                  newTargets.forEach(t => {
+                    if (t.id !== currentTarget.id && t.matchId) {
+                      const m = newPoolMatches.find(pm => pm.id === t.matchId);
+                      if (m && !m.done) {
+                        busyPlayers.add(m.a);
+                        busyPlayers.add(m.b);
+                      }
+                    }
+                  });
+
+                  const pendingPoolMatches = newPoolMatches.filter(m => 
+                    m.poolId === finishedMatch.poolId && 
+                    !m.done && 
+                    !busyPlayers.has(m.a) && 
+                    !busyPlayers.has(m.b)
+                  );
+
+                  const freshMatch = pendingPoolMatches.find(m => 
+                    m.a !== finishedMatch.a && m.a !== finishedMatch.b && 
+                    m.b !== finishedMatch.a && m.b !== finishedMatch.b
+                  );
+
+                  const nextMatch = freshMatch || pendingPoolMatches[0];
+
+                  if (nextMatch) {
+                    newTargets = newTargets.map(t => 
+                      t.id === currentTarget.id ? { ...t, matchId: nextMatch.id } : t
+                    );
+                  } else {
+                    newTargets = newTargets.map(t => 
+                      t.id === currentTarget.id ? { ...t, matchId: null } : t
+                    );
+                  }
+                }
+              } else {
+                const busyPlayers = new Set<string>();
+                newTargets.forEach(t => {
+                  if (t.id !== currentTarget.id && t.matchId) {
+                    let m: any = newPoolMatches.find(pm => pm.id === t.matchId);
+                    if (!m) m = newMainBracket?.rounds.flat().find(bm => bm.id === t.matchId);
+                    if (!m) m = newConsBracket?.rounds.flat().find(bm => bm.id === t.matchId);
+                    
+                    if (m && !m.done) {
+                      if (m.a) busyPlayers.add(m.a);
+                      if (m.b) busyPlayers.add(m.b);
+                    }
+                  }
+                });
+
+                const pendingFinalMatches: {id: string, a: string, b: string}[] = [];
+                
+                if (newMainBracket) {
+                  newMainBracket.rounds.flat().forEach(m => {
+                    if (!m.done && m.a && m.b) pendingFinalMatches.push({id: m.id, a: m.a, b: m.b});
+                  });
+                  if (newMainBracket.thirdPlaceMatch && !newMainBracket.thirdPlaceMatch.done && newMainBracket.thirdPlaceMatch.a && newMainBracket.thirdPlaceMatch.b) {
+                    pendingFinalMatches.push({id: newMainBracket.thirdPlaceMatch.id, a: newMainBracket.thirdPlaceMatch.a, b: newMainBracket.thirdPlaceMatch.b});
+                  }
+                }
+                
+                if (newConsBracket) {
+                  newConsBracket.rounds.flat().forEach(m => {
+                    if (!m.done && m.a && m.b) pendingFinalMatches.push({id: m.id, a: m.a, b: m.b});
+                  });
+                }
+
+                const nextMatch = pendingFinalMatches.find(m => 
+                  m.id !== matchId && 
+                  !busyPlayers.has(m.a) && 
+                  !busyPlayers.has(m.b)
+                );
+
+                if (nextMatch) {
+                  newTargets = newTargets.map(t => 
+                    t.id === currentTarget.id ? { ...t, matchId: nextMatch.id } : t
+                  );
+                } else {
+                  newTargets = newTargets.map(t => 
+                    t.id === currentTarget.id ? { ...t, matchId: null } : t
+                  );
+                }
+              }
+            } else {
+              newTargets = newTargets.map(t => t.matchId === matchId ? { ...t, matchId: null } : t);
+            }
+
             return { 
-              mainBracket: updateBracket(state.mainBracket), 
-              consBracket: updateBracket(state.consBracket),
-              targets: newTargets // 👈 On met à jour les cibles ici aussi
+              poolMatches: newPoolMatches, 
+              mainBracket: newMainBracket,
+              consBracket: newConsBracket,
+              targets: newTargets 
             };
           });
           syncToSupabase();
@@ -389,21 +568,20 @@ export const useTournamentStore = create<TournamentState>()(
             config: { ...config, targetCount: 6 },
             mainBracket: null,
             consBracket: null,
-            manualQualification: {},
+            manualQualification: {}, // 👈 CORRIGÉ ICI
             targets: newTargets
           });
 
           const dataToSync = {
             teams: demoTeams, pools: newPools, poolMatches: newMatches,
             mainBracket: null, consBracket: null,
-            targets: newTargets, config: { ...config, targetCount: 6 }, manualQualification: {}
+            targets: newTargets, config: { ...config, targetCount: 6 }, 
+            manualQualification: {}, 
+            appTitle: state.appTitle, appSubtitle: state.appSubtitle, appLogo: state.appLogo
           };
-          supabase.from('tournament_sync').upsert({ id: 'current_tournament', state: dataToSync })
-            .then(({ error }) => {
-              if (error) console.error("❌ ERREUR DEMO SYNC:", error.message);
-              else console.log("✅ Démo synchronisée avec Supabase !");
-            });
+          supabase.from('tournament_sync').upsert({ id: 'current_tournament', state: dataToSync });
         },
+
         resetTournament: () => {
           set({
             teams: [], pools: [], poolMatches: [], mainBracket: null, consBracket: null,

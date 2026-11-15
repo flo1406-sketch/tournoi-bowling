@@ -14,40 +14,41 @@ Application web de gestion de **tournoi de fléchettes individuel**.
 
 Le projet est une **application React moderne** construite avec :
 - **React 18** + **TypeScript** (fichiers `.tsx`).
-- **Vite** pour le bundling et le serveur de développement.
+- **Vite** pour le bundling.
 - **Tailwind CSS** pour le style.
 - **Zustand** pour la gestion de l'état global.
 - **React Router DOM** pour la navigation.
 - **Supabase** (PostgreSQL + Realtime) pour la synchronisation multi-appareils.
-- **qrcode.react** pour la génération des QR codes.
+- **qrcode.react** pour générer les QR codes joueurs.
 - **Vercel** pour l'hébergement en production.
 
 ### Ce qui est FAIT (et fonctionnel) :
-- [x] Architecture modulaire (pages, composants, store, utils, lib).
-- [x] Gestion des joueurs (ajout, suppression, réordonnancement avec numérotation).
-- [x] Paramétrage complet (format des poules, legs, cibles dynamiques).
-- [x] Génération des poules et de la phase finale (croisement inter-poules, gestion des BYE).
-- [x] **Match pour la 3ème place (Petite Finale)** généré automatiquement (uniquement pour le tableau principal).
-- [x] **Synchronisation Supabase Realtime** : Les scores saisis sur mobile remontent sur la tablette.
-- [x] **Système de QR Codes** : Génération par poule pour la saisie des scores sur mobile.
-- [x] **Attribution de cible bidirectionnelle** : On peut assigner un match à une cible depuis l'onglet "Cibles" OU directement depuis l'arbre de la "Phase Finale" (via un menu déroulant). La cible se libère automatiquement une fois le score saisi.
-- [x] Classement général (Points, Différentiel, Legs).
-- [x] Mode Démo (19 joueurs avec scores pré-remplis) pour les tests/vidéos.
+- [x] Architecture modulaire.
+- [x] Gestion des joueurs, génération des poules et des tableaux finaux.
+- [x] **Match pour la 3ème place (Petite Finale)** généré pour le tableau principal.
+- [x] **Synchronisation Supabase Realtime** : Scores saisis sur mobile = mise à jour instantanée sur la tablette.
+- [x] **Système de QR Codes** : Génération par poule ET par match de phase finale.
+- [x] **Vue "Contrôle Cibles" (Poules & Finales)** : Une vue optimisée pour la projection (rétroprojecteur) avec des colonnes par cible, la file d'attente et les QR codes intégrés.
+- [x] **Algorithme d'affectation équitable (Régulateur)** : Assigne les matchs aux cibles pour que toutes les poules se terminent en même temps (priorité aux poules en retard). Évite de faire jouer les mêmes joueurs d'affilée.
+- [x] **Affectation automatique** : Dès qu'un match se termine, le prochain match de la poule est placé sur la cible libérée si les joueurs sont disponibles.
+- [x] **Saisie des scores en ligne** : Les scores sont sur la même ligne que les noms dans les arbres de tournoi, avec un bouton "Valider".
+- [x] **Reset des scores** : Utilisation de `key={match.id}` sur `ScoreInput` pour éviter que les scores du match précédent restent affichés.
 
 ---
 
 ## ⚠️ 3. RÈGLES MÉTIER CRITIQUES
 
 1. **Tournoi individuel** : On parle de "Joueurs", jamais d'"Équipes" ou de "Doublettes".
-2. **Aucun match nul** : Aux fléchettes, on ne fait pas de nul. Si un score identique est saisi, il est bloqué.
+2. **Aucun match nul** : Aux fléchettes, on ne fait pas de nul. Le score identique est bloqué.
 3. **Numérotation des joueurs** : Le numéro (`#1`, `#2`...) est **dérivé de l'index** du joueur dans le tableau `teams`.
 4. **Croisement Inter-Poules** : En phase finale, le 1er d'une poule affronte le 2e d'une autre poule.
-5. **Cibles dynamiques** : On peut ajouter/supprimer/renommer des cibles (par défaut 6 cibles, nommées "1", "2", etc.).
-6. **Troisième place** : Un match de "Petite Finale" est généré uniquement pour le tableau principal pour déterminer le 3ème.
+5. **Cibles dynamiques** : On peut ajouter/supprimer/renommer des cibles. Chaque cible peut avoir une "Poule par défaut".
+6. **Troisième place** : Un match de "Petite Finale" est généré uniquement pour le tableau principal.
+7. **Régulation (Contrôle Cibles)** : L'algorithme d'affectation cherche toujours à équilibrer la progression des poules et à maximiser le temps de repos des joueurs.
 
 ---
 
-## 📁 4. Structure des Fichiers (À JOUR)
+## 📁 4. Structure des Fichiers
 
 ```text
 tournoi-bowling/
@@ -55,7 +56,7 @@ tournoi-bowling/
 ├── HANDOFF.md             # Ce document
 ├── src/
 │   ├── main.tsx           # Point d'entrée
-│   ├── App.tsx            # Routeur principal (inclut /score/:poolId hors Layout)
+│   ├── App.tsx            # Routeur principal (inclut /score/:poolId et /score/final/:matchId)
 │   ├── index.css          # Tailwind + classes utilitaires
 │   ├── types.ts           # Interfaces TS (Team, Pool, Match, Bracket, Target, TournamentState)
 │   ├── lib/
@@ -70,19 +71,23 @@ tournoi-bowling/
 │   │   ├── Button.tsx     # Bouton réutilisable
 │   │   └── ScoreInput.tsx # Saisie de score robuste
 │   └── pages/
-│       ├── HomePage.tsx       # Dashboard + Bouton Démo
-│       ├── InscriptionsPage.tsx # Gestion des joueurs
-│       ├── SettingsPage.tsx   # Paramétrage complet
-│       ├── PoolsPage.tsx      # Affichage des poules + Bouton QR Codes
-│       ├── FinalsPage.tsx     # Arbre de tournoi + Petite Finale + Podium + Assignation Cibles
-│       ├── TargetsPage.tsx    # Attribution des cibles
-│       ├── StatsPage.tsx      # Classement général
-│       └── ScoreEntryPage.tsx # Page mobile accessible via QR Code
+│       ├── HomePage.tsx           # Dashboard + Bouton Démo
+│       ├── InscriptionsPage.tsx   # Gestion des joueurs
+│       ├── SettingsPage.tsx       # Paramétrage complet
+│       ├── PoolsPage.tsx          # Affichage des poules (bascule Classique / Contrôle Cibles)
+│       ├── PoolControlRoom.tsx    # Vue colonnes pour les cibles de poules
+│       ├── FinalsPage.tsx         # Arbre de tournoi (bascule Arbre / Contrôle Cibles)
+│       ├── FinalControlRoom.tsx   # Vue colonnes pour les cibles de finales
+│       ├── TargetsPage.tsx        # Attribution classique des cibles
+│       ├── StatsPage.tsx          # Classement général
+│       ├── ScoreEntryPage.tsx     # Saisie mobile via QR Code (Poules)
+│       └── ScoreEntryFinalPage.tsx # Saisie mobile via QR Code (Finales)
 
-    🛠️ 5. Configuration Supabase (Crucial)
+🛠️ 5. Configuration Supabase (Crucial)
 
 L'application fonctionne en réseau grâce à Supabase.
-Script SQL exécuté
+Script SQL (à exécuter dans Supabase)
+
 create table if not exists tournament_sync (
   id text primary key default 'current_tournament',
   state jsonb not null,
@@ -101,29 +106,34 @@ Logique du Store
 
     fetchInitialState() récupère les données au démarrage (utilise .maybeSingle() pour éviter l'erreur "cannot coerce").
 
-    Un écouteur supabase.channel met à jour le store en temps réel si un autre appareil modifie les données.
-    La fonction commitScore libère automatiquement la cible associée au match si un score est validé.
+    Un écouteur supabase.channel met à jour le store en temps réel.
 
-    🚀 6. Commandes et Déploiement
+    La fonction commitScore libère automatiquement la cible et cherche le prochain match de la poule (avec logique anti-matchs d'affilée).
+
+    🚀 6. Commandes utiles et Déploiement
+
     # Installation
 npm install
 
-# Développement (test local)
+# Développement local
 npm run dev
 
-# Déploiement en production (Vercel)
+# ⚠️ TRÈS IMPORTANT : Tester le build avant de déployer
+npm run build
+
+# Déploiement en production (Vercel CLI)
 vercel --prod
 
-⚠️ Toujours lancer npm run build en local avant de déployer pour s'assurer qu'il n'y a pas d'erreurs TypeScript (comme les variables non utilisées) qui feraient échouer le build sur Vercel.
+Note sur les QR codes : En local (localhost), les QR codes ne fonctionnent pas sur téléphone. Il faut tester via l'URL de production Vercel.
 
-    💡 7. Pistes d'amélioration futures
+💡 7. Pistes d'amélioration futures
 
-□
+    □
 
-Sécurisation : Ajouter un code PIN pour empêcher les joueurs d'accéder aux onglets d'administration (actuellement, s'ils modifient l'URL, ils peuvent voir l'interface organisateur).
-□
+    Sécurisation : Ajouter un code PIN pour empêcher les joueurs d'accéder aux onglets d'administration (actuellement, s'ils modifient l'URL, ils peuvent voir l'interface organisateur).
+    □
 
-Affichage TV : Un mode "Plein écran" pour projeter les tableaux et le classement sur un grand écran.
-□
+    Mode TV : Un mode "Plein écran" (déjà partiellement géré par la vue Contrôle) pour projeter les tableaux et le classement sur un grand écran.
+    □
 
-Validation des scores : Si un joueur se trompe en saisissant son score, prévoir un bouton "Signaler une erreur" sur mobile.
+    Validation des scores : Si un joueur se trompe en saisissant son score, prévoir un bouton "Signaler une erreur" sur mobile.

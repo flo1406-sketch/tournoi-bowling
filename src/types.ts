@@ -41,13 +41,14 @@ export interface Bracket {
   slots: (string | null)[];
   scores: Record<string, { sa: number; sb: number }>;
   rounds: BracketMatch[][];
-  thirdPlaceMatch?: BracketMatch | null; // 👈 AJOUTÉ ICI
+  thirdPlaceMatch?: BracketMatch | null;
 }
 
 export interface Target {
   id: string;
   label: string;
   matchId: string | null;
+  defaultPoolId?: string | null; // 👈 AJOUT
 }
 
 // ==========================================
@@ -71,6 +72,7 @@ export interface TeamStat {
 // ==========================================
 
 export interface TournamentState {
+  // ----- Données -----
   teams: Team[];
   pools: Pool[];
   poolMatches: Match[];
@@ -86,31 +88,50 @@ export interface TournamentState {
     targetCount: number;
   };
   manualQualification: Record<string, 'main' | 'cons'>;
+  
+  // 👇 NOUVELLES DONNÉES D'EN-TÊTE 👇
+  appTitle: string;
+  appSubtitle: string;
+  appLogo: string | null;
 
+  // ----- Actions Joueurs -----
   addTeam: (name: string) => void;
   removeTeam: (id: string) => void;
   moveTeam: (id: string, dir: number) => void;
   setTeamNumber: (id: string, num: number) => void;
   movePlayerToPool: (playerId: string, targetPoolId: string | null) => void;
 
+  // ----- Actions Configuration -----
   setConfig: (key: string, value: number) => void;
   setManualQualification: (teamId: string, target: 'main' | 'cons' | null) => void;
+  
+  // 👇 NOUVELLES ACTIONS 👇
+  setAppTitle: (title: string) => void;
+  setAppSubtitle: (subtitle: string) => void;
+  setAppLogo: (logo: string | null) => void;
+  setTargetDefaultPool: (targetId: string, poolId: string | null) => void;
 
+  // ----- Actions Cibles -----
   addTarget: () => void;
   removeTarget: (id: string) => void;
   updateTargetLabel: (id: string, label: string) => void;
   assignTarget: (targetId: string, matchId: string | null) => void;
-
+  autoAssignTargets: () => void;
+  // ----- Actions Tournoi -----
   generatePools: () => void;
   generateFinals: () => void;
   generateDemo: () => void;
 
+  // ----- Actions Scores -----
   commitScore: (matchId: string, sa: number, sb: number) => void;
   clearMatch: (matchId: string) => void;
 
+  // ----- Actions Arbre de Tournoi -----
   swapBracketSlots: (brKey: 'main' | 'cons', idxA: number, idxB: number) => void;
 
+  // ----- Actions Stats -----
   getGlobalStats: () => TeamStat[];
 
+  // ----- Reset -----
   resetTournament: () => void;
 }
