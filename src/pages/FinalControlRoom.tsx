@@ -25,12 +25,10 @@ const FinalMatchCard = ({ match, teams, onRelease }: { match: any, teams: any[],
 
   return (
     <div className="flex-1 flex flex-col p-2">
-      <div className={`text-center text-[10px] font-bold uppercase tracking-widest mb-3 py-1 rounded flex items-center justify-center gap-1 ${match.isMain ? 'bg-green-900/40 text-green-400' : 'bg-pink-900/40 text-pink-400'}`}>
+      <div className={`text-center text-[9px] font-bold uppercase tracking-wider mb-2 py-1 px-1 rounded flex flex-col items-center justify-center leading-tight ${match.isMain ? 'bg-green-900/40 text-green-400' : 'bg-pink-900/40 text-pink-400'}`}>
         <span>{match.isMain ? 'Principal' : 'Consolante'}</span>
-        <span className="text-[8px] opacity-75">·</span>
-        <span>{match.label}</span>
-        <span className="text-[8px] opacity-75">·</span>
-        <span>BO{boValue}</span>
+        <span className="text-[9px] text-white opacity-90 truncate w-full px-1">{match.label}</span>
+        <span className="text-[9px] text-bowling-neon">BO{boValue}</span>
       </div>
       
       <div className="flex items-center justify-between gap-2 bg-black/20 p-1.5 rounded mb-2">

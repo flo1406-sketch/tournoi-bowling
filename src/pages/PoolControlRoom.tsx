@@ -3,9 +3,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useTournamentStore } from '../store/useTournamentStore';
 import { Button } from '../components/Button';
 
-// 👇 COMPOSANT POUR LA SAISIE VERTICALE DES POULES 👇
 const PoolMatchCard = ({ match, teams, onRelease }: { match: any, teams: any[], onRelease: () => void }) => {
-  const { commitScore } = useTournamentStore();
+  const { commitScore, config } = useTournamentStore();
   const [sa, setSa] = useState('');
   const [sb, setSb] = useState('');
 
@@ -21,13 +20,11 @@ const PoolMatchCard = ({ match, teams, onRelease }: { match: any, teams: any[], 
 
   return (
     <div className="flex-1 flex flex-col p-2">
-      
-      {/* Type de match (Poule) */}
-      <div className="text-center text-[10px] font-bold uppercase tracking-widest mb-3 py-1 rounded bg-bowling-neon/10 text-bowling-neon">
-        {match.poolName}
+      <div className="text-center text-[9px] font-bold uppercase tracking-wider mb-2 py-1 px-1 rounded bg-bowling-neon/10 text-bowling-neon flex flex-col items-center justify-center leading-tight">
+        <span className="truncate w-full px-1">{match.poolName}</span>
+        <span className="text-[9px] text-white opacity-90">BO{config.legsToWinPool * 2 - 1}</span>
       </div>
       
-      {/* Ligne Joueur A */}
       <div className="flex items-center justify-between gap-2 bg-black/20 p-1.5 rounded mb-2">
         <span className="truncate flex-1 font-bold text-sm text-white pl-1">
           {teams.find(t => t.id === match.a)?.name}
@@ -41,7 +38,6 @@ const PoolMatchCard = ({ match, teams, onRelease }: { match: any, teams: any[], 
         />
       </div>
 
-      {/* Ligne Joueur B */}
       <div className="flex items-center justify-between gap-2 bg-black/20 p-1.5 rounded mb-3">
         <span className="truncate flex-1 font-bold text-sm text-white pl-1">
           {teams.find(t => t.id === match.b)?.name}
@@ -55,7 +51,6 @@ const PoolMatchCard = ({ match, teams, onRelease }: { match: any, teams: any[], 
         />
       </div>
 
-      {/* Bouton Valider */}
       <Button 
         variant="primary" 
         onClick={handleValidate}
@@ -64,7 +59,6 @@ const PoolMatchCard = ({ match, teams, onRelease }: { match: any, teams: any[], 
         ✓ Valider
       </Button>
 
-      {/* Bouton Annuler */}
       <div className="mt-2 text-center">
         <button onClick={onRelease} className="text-[9px] text-slate-500 hover:text-red-400 underline decoration-dotted transition-colors">
           Annuler le match
@@ -73,7 +67,6 @@ const PoolMatchCard = ({ match, teams, onRelease }: { match: any, teams: any[], 
     </div>
   );
 };
-
 
 export const PoolControlRoom = () => {
   const { pools, poolMatches, targets, teams, assignTarget, setTargetDefaultPool } = useTournamentStore();
@@ -206,8 +199,6 @@ export const PoolControlRoom = () => {
 
           return (
             <div key={target.id} className={`flex-1 min-w-0 bg-bowling-panel border ${isBusy ? 'border-bowling-neon shadow-[0_0_15px_rgba(0,243,255,0.15)]' : 'border-bowling-line'} rounded-xl flex flex-col overflow-hidden`}>
-              
-              {/* En-tête de la cible */}
               <div className={`p-2 flex flex-col items-center border-b ${isBusy ? 'bg-bowling-neon/10 border-bowling-neon/30' : 'bg-black/30 border-bowling-line'}`}>
                 <span className={`text-2xl font-black ${isBusy ? 'text-bowling-neon' : 'text-slate-500'}`}>
                   {target.label}
@@ -229,7 +220,7 @@ export const PoolControlRoom = () => {
 
               {isBusy && currentMatch ? (
                 <PoolMatchCard 
-                  key={currentMatch.id} // 👈 L'astuce pour reset les scores
+                  key={currentMatch.id}
                   match={{...currentMatch, poolName: currentMatchPool?.name}} 
                   teams={teams} 
                   onRelease={() => assignTarget(target.id, null)} 
@@ -272,7 +263,6 @@ export const PoolControlRoom = () => {
                 </div>
               )}
 
-              {/* QR Code */}
               {isBusy && currentMatchPool && (
                 <div className="p-1.5 flex justify-center bg-black/20 border-t border-bowling-line mt-auto">
                   <div className="bg-white p-0.5 rounded">
@@ -289,7 +279,6 @@ export const PoolControlRoom = () => {
         })}
       </div>
 
-      {/* File d'attente en bas */}
       <div className="h-40 bg-bowling-panel border border-bowling-line rounded-xl p-3 flex flex-col shrink-0">
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider text-bowling-neon">

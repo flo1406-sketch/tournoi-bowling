@@ -14,10 +14,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Route publique pour les joueurs (via QR code) */}
+        {/* 👇 1. ROUTES PUBLIQUES (Sans Navbar, plein écran pour les téléphones) 👇 */}
         <Route path="/score/:poolId" element={<ScoreEntryPage />} />
-        
-        {/* Routes de l'organisateur */}
+        <Route path="/score/final/:matchId" element={<ScoreEntryFinalPage />} />
+
+        {/* 👇 2. ROUTES ADMIN (Avec la Navbar et le Layout) 👇 */}
         <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="inscriptions" element={<InscriptionsPage />} />
@@ -26,7 +27,6 @@ export default function App() {
           <Route path="finale" element={<FinalsPage />} />
           <Route path="cibles" element={<TargetsPage />} />
           <Route path="classement" element={<StatsPage />} />
-          <Route path="/score/final/:matchId" element={<ScoreEntryFinalPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
