@@ -107,54 +107,46 @@ export const PoolControlRoom = () => {
     const activePools = poolStats.filter(ps => ps.hasPending);
     activePools.sort((a, b) => a.progress - b.progress);
 
-    const assignedMatchIds = new Set(targets.map(t => t.matchId).filter(Boolean) as string[]);
-    
-    const findBestMatchForPool = (poolId: string) => {
-      const pending = poolMatches.filter(m => 
-        m.poolId === poolId && !m.done && !busyPlayers.has(m.a) && !busyPlayers.has(m.b) && !assignedMatchIds.has(m.id)
-      );
+    const availableMatches = poolMatches.filter(m => !m.done && !targets.some(t => t.matchId === m.id));
+    const toAssign: { targetId: string, matchId: string }[] = [];
 
-      const lastPlayed = [...poolMatches]
-        .filter(m => m.poolId === poolId && m.done)
-        .sort((a, b) => a.id.localeCompare(b.id))
-        .pop();
+    for (const target of freeTargets) {
+      let matchToAssign = null;
 
-      if (lastPlayed) {
-        const freshMatch = pending.find(m => 
-          m.a !== lastPlayed.a && m.a !== lastPlayed.b && 
-          m.b !== lastPlayed.a && m.b !== lastPlayed.b
+      // On cherche d'abord dans les poules en retard
+      for (const { pool } of activePools) {
+        const match = availableMatches.find(m => 
+          m.poolId === pool.id && 
+          !busyPlayers.has(m.a) && 
+          !busyPlayers.has(m.b) &&
+          !toAssign.some(ta => ta.matchId === m.id)
         );
-        if (freshMatch) return freshMatch;
-      }
-      return pending[0];
-    };
-
-    let targetIdx = 0;
-    let poolIdx = 0;
-    let loops = 0;
-
-    while (targetIdx < freeTargets.length && poolIdx < activePools.length) {
-      loops++;
-      if (loops > activePools.length * 2) break;
-
-      const currentPool = activePools[poolIdx].pool;
-      const match = findBestMatchForPool(currentPool.id);
-
-      if (match) {
-        assignTarget(freeTargets[targetIdx].id, match.id);
-        assignedMatchIds.add(match.id);
-        busyPlayers.add(match.a);
-        busyPlayers.add(match.b);
-        targetIdx++;
-        poolIdx++; 
-      } else {
-        poolIdx++;
+        if (match) {
+          matchToAssign = match;
+          break;
+        }
       }
 
-      if (poolIdx >= activePools.length && targetIdx < freeTargets.length) {
-        poolIdx = 0;
+      // Si on ne trouve rien, on prend n'importe quel match disponible
+      if (!matchToAssign) {
+        matchToAssign = availableMatches.find(m => 
+          !busyPlayers.has(m.a) && 
+          !busyPlayers.has(m.b) &&
+          !toAssign.some(ta => ta.matchId === m.id)
+        );
+      }
+
+      if (matchToAssign) {
+        toAssign.push({ targetId: target.id, matchId: matchToAssign.id });
+        busyPlayers.add(matchToAssign.a);
+        busyPlayers.add(matchToAssign.b);
       }
     }
+
+    // On applique toutes les assignations d'un seul coup
+    toAssign.forEach(({ targetId, matchId }) => {
+      assignTarget(targetId, matchId);
+    });
   };
 
   const getNextMatch = (poolId: string) => {

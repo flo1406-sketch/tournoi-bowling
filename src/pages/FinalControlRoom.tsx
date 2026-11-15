@@ -124,20 +124,27 @@ export const FinalControlRoom = () => {
       }
     });
 
-    const assignedMatchIds = new Set(targets.map(t => t.matchId).filter(Boolean) as string[]);
+    const availableMatches = allPendingMatches.filter(m => !targets.some(t => t.matchId === m.id));
+    const toAssign: { targetId: string, matchId: string }[] = [];
 
     for (const target of freeTargets) {
-      const availableMatch = allPendingMatches.find(m => 
-        !busyPlayers.has(m.a) && !busyPlayers.has(m.b) && !assignedMatchIds.has(m.id)
+      const match = availableMatches.find(m => 
+        !busyPlayers.has(m.a) && 
+        !busyPlayers.has(m.b) &&
+        !toAssign.some(ta => ta.matchId === m.id)
       );
 
-      if (availableMatch) {
-        assignTarget(target.id, availableMatch.id);
-        assignedMatchIds.add(availableMatch.id);
-        busyPlayers.add(availableMatch.a);
-        busyPlayers.add(availableMatch.b);
+      if (match) {
+        toAssign.push({ targetId: target.id, matchId: match.id });
+        busyPlayers.add(match.a);
+        busyPlayers.add(match.b);
       }
     }
+
+    // On applique toutes les assignations d'un seul coup
+    toAssign.forEach(({ targetId, matchId }) => {
+      assignTarget(targetId, matchId);
+    });
   };
 
   return (
