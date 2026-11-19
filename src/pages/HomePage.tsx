@@ -3,7 +3,7 @@ import { useTournamentStore } from '../store/useTournamentStore';
 import { Button } from '../components/Button';
 
 export const HomePage = () => {
-  const { teams, pools, mainBracket, generateDemo, appLogo } = useTournamentStore();
+  const { teams, pools, mainBracket, generateDemo, appLogo, appTitle, appSubtitle } = useTournamentStore();
   const navigate = useNavigate();
 
   const handleDemo = () => {
@@ -16,36 +16,40 @@ export const HomePage = () => {
   return (
     <div className="space-y-6">
       
-      {/* 👇 LE HERO AVEC LE LOGO DU CLUB 👇 */}
+      {/* 👇 LE HERO DYNAMIQUE 👇 */}
       <div className="panel text-center py-12 relative overflow-hidden flex flex-col items-center">
         
-        {/* Effet de halo lumineux en arrière-plan */}
+        {/* Effet de halo lumineux */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-bowling-neon/20 blur-[80px] rounded-full pointer-events-none"></div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-bowling-pink/20 blur-[60px] rounded-full pointer-events-none"></div>
 
-        {/* Affichage du Logo */}
+        {/* Affichage du Logo (Celui que tu as uploadé, ou une cible par défaut) */}
         <div className="relative mb-6 z-10">
           {appLogo ? (
             <img 
               src={appLogo} 
-              alt="Logo du Club" 
+              alt="Logo" 
               className="w-32 h-32 object-contain rounded-2xl shadow-[0_0_30px_rgba(0,243,255,0.3)] bg-black/20 p-2 border border-bowling-line" 
             />
           ) : (
-            <div className="w-32 h-32 bg-red-600 rounded-2xl flex flex-col items-center justify-center text-white shadow-[0_0_30px_rgba(220,38,38,0.5)] border border-red-500/50">
-              <span className="text-6xl font-black leading-none">B</span>
-              <span className="text-xs font-bold text-center leading-tight mt-1">BOWLING<br/>LIMOGES NORD</span>
+            <div className="w-32 h-32 bg-bowling-panel rounded-2xl flex flex-col items-center justify-center text-bowling-neon shadow-[0_0_30px_rgba(0,243,255,0.3)] border border-bowling-line">
+              <span className="text-6xl leading-none">🎯</span>
             </div>
           )}
         </div>
 
-        <h1 className="text-4xl md:text-5xl font-black mb-4 relative z-10 text-white">
-          Tournoi du <span className="bg-gradient-to-r from-bowling-neon to-bowling-pink bg-clip-text text-transparent">Bowling</span>
+        {/* Titre et Sous-titre Dynamiques */}
+        <h1 className="text-4xl md:text-5xl font-black mb-2 relative z-10 text-white">
+          {appTitle}
         </h1>
+        <h2 className="text-lg md:text-xl font-bold mb-6 relative z-10 text-bowling-neon tracking-widest uppercase">
+          {appSubtitle}
+        </h2>
+        
         <p className="text-slate-400 mb-8 max-w-lg mx-auto relative z-10 text-sm md:text-base">
-          Organisé par le <strong className="text-white">Bowling Limoges Nord</strong>.<br/>
           Inscrivez les joueurs, générez les poules et suivez les matchs sur les cibles en temps réel.
         </p>
+        
         <div className="flex justify-center gap-4 relative z-10">
           <Link to="/inscriptions" className="btn btn-primary px-8 py-3 text-base">Commencer les inscriptions</Link>
           {mainBracket && <Link to="/finale" className="btn px-8 py-3 text-base">Voir la phase finale</Link>}

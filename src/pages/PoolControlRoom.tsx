@@ -19,50 +19,62 @@ const PoolMatchCard = ({ match, teams, onRelease }: { match: any, teams: any[], 
   };
 
   return (
-    <div className="flex-1 flex flex-col p-2">
-      <div className="text-center text-[9px] font-bold uppercase tracking-wider mb-2 py-1 px-1 rounded bg-bowling-neon/10 text-bowling-neon flex flex-col items-center justify-center leading-tight">
-        <span className="truncate w-full px-1">{match.poolName}</span>
-        <span className="text-[9px] text-white opacity-90">BO{config.legsToWinPool * 2 - 1}</span>
-      </div>
-      
-      <div className="flex items-center justify-between gap-2 bg-black/20 p-1.5 rounded mb-2">
-        <span className="truncate flex-1 font-bold text-sm text-white pl-1">
-          {teams.find(t => t.id === match.a)?.name}
-        </span>
-        <input
-          type="number"
-          min="0"
-          value={sa}
-          onChange={(e) => setSa(e.target.value)}
-          className="w-10 h-8 text-center bg-bowling-dark border border-bowling-line rounded text-bowling-neon font-bold text-lg outline-none focus:border-bowling-neon [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        />
+    <div className="flex flex-col justify-between h-full p-2">
+      <div>
+        <div className="text-center text-[10px] font-bold uppercase tracking-wider mb-2 py-1 px-1 rounded bg-bowling-neon/10 text-bowling-neon flex flex-col items-center justify-center leading-tight">
+          <span className="truncate w-full px-1">{match.poolName}</span>
+          <span className="text-[9px] text-white opacity-90">BO{config.legsToWinPool * 2 - 1}</span>
+        </div>
+        
+        <div className="flex items-center justify-between gap-2 bg-black/20 p-1.5 rounded mb-2">
+          <span className="truncate flex-1 font-bold text-sm text-white pl-1">
+            {teams.find(t => t.id === match.a)?.name}
+          </span>
+          <input
+            type="number"
+            min="0"
+            value={sa}
+            onChange={(e) => setSa(e.target.value)}
+            className="w-10 h-8 text-center bg-bowling-dark border border-bowling-line rounded text-bowling-neon font-bold text-lg outline-none focus:border-bowling-neon [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-2 bg-black/20 p-1.5 rounded mb-3">
+          <span className="truncate flex-1 font-bold text-sm text-white pl-1">
+            {teams.find(t => t.id === match.b)?.name}
+          </span>
+          <input
+            type="number"
+            min="0"
+            value={sb}
+            onChange={(e) => setSb(e.target.value)}
+            className="w-10 h-8 text-center bg-bowling-dark border border-bowling-line rounded text-bowling-neon font-bold text-lg outline-none focus:border-bowling-neon [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+        </div>
+
+        <Button 
+          variant="primary" 
+          onClick={handleValidate}
+          className="w-full text-xs py-1.5 h-auto shadow-none"
+        >
+          ✓ Valider
+        </Button>
+
+        <div className="mt-2 text-center">
+          <button onClick={onRelease} className="text-[9px] text-slate-500 hover:text-red-400 underline decoration-dotted transition-colors">
+            Annuler le match
+          </button>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 bg-black/20 p-1.5 rounded mb-3">
-        <span className="truncate flex-1 font-bold text-sm text-white pl-1">
-          {teams.find(t => t.id === match.b)?.name}
-        </span>
-        <input
-          type="number"
-          min="0"
-          value={sb}
-          onChange={(e) => setSb(e.target.value)}
-          className="w-10 h-8 text-center bg-bowling-dark border border-bowling-line rounded text-bowling-neon font-bold text-lg outline-none focus:border-bowling-neon [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        />
-      </div>
-
-      <Button 
-        variant="primary" 
-        onClick={handleValidate}
-        className="w-full text-xs py-1.5 h-auto shadow-none"
-      >
-        ✓ Valider
-      </Button>
-
-      <div className="mt-2 text-center">
-        <button onClick={onRelease} className="text-[9px] text-slate-500 hover:text-red-400 underline decoration-dotted transition-colors">
-          Annuler le match
-        </button>
+      <div className="flex justify-center mt-2">
+        <div className="bg-white p-1 rounded">
+          <QRCodeSVG 
+            value={`${window.location.origin}/score/${match.poolId}`} 
+            size={55} 
+            level="L" 
+          />
+        </div>
       </div>
     </div>
   );
@@ -107,13 +119,12 @@ export const PoolControlRoom = () => {
     const activePools = poolStats.filter(ps => ps.hasPending);
     activePools.sort((a, b) => a.progress - b.progress);
 
-    const availableMatches = poolMatches.filter(m => !m.done && !targets.some(t => t.matchId === m.id));
     const toAssign: { targetId: string, matchId: string }[] = [];
+    const availableMatches = poolMatches.filter(m => !m.done && !targets.some(t => t.matchId === m.id));
 
     for (const target of freeTargets) {
       let matchToAssign = null;
 
-      // On cherche d'abord dans les poules en retard
       for (const { pool } of activePools) {
         const match = availableMatches.find(m => 
           m.poolId === pool.id && 
@@ -127,7 +138,6 @@ export const PoolControlRoom = () => {
         }
       }
 
-      // Si on ne trouve rien, on prend n'importe quel match disponible
       if (!matchToAssign) {
         matchToAssign = availableMatches.find(m => 
           !busyPlayers.has(m.a) && 
@@ -143,7 +153,6 @@ export const PoolControlRoom = () => {
       }
     }
 
-    // On applique toutes les assignations d'un seul coup
     toAssign.forEach(({ targetId, matchId }) => {
       assignTarget(targetId, matchId);
     });
@@ -180,7 +189,10 @@ export const PoolControlRoom = () => {
   };
 
   return (
-    <div className="flex flex-col gap-4 h-[calc(100vh-180px)]">
+    // 👇 Remplacement de h-[calc(...)] par h-full pour s'adapter au parent
+    <div className="flex flex-col gap-4 h-full w-full overflow-hidden">
+      
+      {/* Zone des cibles qui prend tout l'espace disponible (flex-1) */}
       <div className="flex-1 flex gap-2 overflow-hidden">
         {targets.map((target) => {
           const defaultPool = pools.find(p => p.id === target.defaultPoolId);
@@ -254,23 +266,12 @@ export const PoolControlRoom = () => {
                   </div>
                 </div>
               )}
-
-              {isBusy && currentMatchPool && (
-                <div className="p-1.5 flex justify-center bg-black/20 border-t border-bowling-line mt-auto">
-                  <div className="bg-white p-0.5 rounded">
-                    <QRCodeSVG 
-                      value={`${window.location.origin}/score/${currentMatchPool.id}`} 
-                      size={55} 
-                      level="L" 
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           );
         })}
       </div>
 
+      {/* Zone de la file d'attente qui garde sa taille (shrink-0) */}
       <div className="h-40 bg-bowling-panel border border-bowling-line rounded-xl p-3 flex flex-col shrink-0">
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider text-bowling-neon">

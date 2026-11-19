@@ -353,10 +353,11 @@ export const useTournamentStore = create<TournamentState>()(
           syncToSupabase();
         },
 
-        commitScore: (matchId, sa, sb) => {
+                commitScore: (matchId, sa, sb) => {
           if (sa === sb) return;
           
           set((state) => {
+            // 1. Mettre à jour le match avec le nouveau score
             const newPoolMatches = state.poolMatches.map(m => 
               m.id === matchId ? { ...m, sa, sb, done: true } : m
             );
@@ -375,98 +376,93 @@ export const useTournamentStore = create<TournamentState>()(
               newConsBracket = updateBracket(state.consBracket);
             }
 
-            const currentTarget = state.targets.find(t => t.matchId === matchId);
-            let newTargets = [...state.targets];
+            // 2. Libérer la cible qui accueillait ce match
+            let newTargets = state.targets.map(t => t.matchId === matchId ? { ...t, matchId: null } : t);
 
-            if (currentTarget) {
-              if (isPoolMatch) {
-                const finishedMatch = newPoolMatches.find(m => m.id === matchId);
-                if (finishedMatch && finishedMatch.poolId) {
-                  const busyPlayers = new Set<string>();
-                  newTargets.forEach(t => {
-                    if (t.id !== currentTarget.id && t.matchId) {
-                      const m = newPoolMatches.find(pm => pm.id === t.matchId);
-                      if (m && !m.done) {
-                        busyPlayers.add(m.a);
-                        busyPlayers.add(m.b);
-                      }
-                    }
-                  });
+            // 3. LANCER L'AFFECTATION AUTOMATIQUE GLOBALE
+            const freeTargets = newTargets.filter(t => !t.matchId);
+            if (freeTargets.length > 0) {
+              
+              // Récupérer tous les matchs en attente
+              const allPending: any[] = [
+                ...newPoolMatches.filter(m => !m.done).map(m => ({ ...m, isPool: true })),
+                ...(newMainBracket?.rounds.flat().filter(m => !m.done && m.a && m.b).map(m => ({ ...m, isPool: false })) || []),
+                ...(newConsBracket?.rounds.flat().filter(m => !m.done && m.a && m.b).map(m => ({ ...m, isPool: false })) || []),
+                ...(newMainBracket?.thirdPlaceMatch && !newMainBracket.thirdPlaceMatch.done && newMainBracket.thirdPlaceMatch.a ? [{ ...newMainBracket.thirdPlaceMatch, isPool: false }] : [])
+              ];
 
-                  const pendingPoolMatches = newPoolMatches.filter(m => 
-                    m.poolId === finishedMatch.poolId && 
-                    !m.done && 
-                    !busyPlayers.has(m.a) && 
-                    !busyPlayers.has(m.b)
-                  );
-
-                  const freshMatch = pendingPoolMatches.find(m => 
-                    m.a !== finishedMatch.a && m.a !== finishedMatch.b && 
-                    m.b !== finishedMatch.a && m.b !== finishedMatch.b
-                  );
-
-                  const nextMatch = freshMatch || pendingPoolMatches[0];
-
-                  if (nextMatch) {
-                    newTargets = newTargets.map(t => 
-                      t.id === currentTarget.id ? { ...t, matchId: nextMatch.id } : t
-                    );
-                  } else {
-                    newTargets = newTargets.map(t => 
-                      t.id === currentTarget.id ? { ...t, matchId: null } : t
-                    );
+              // Identifier les joueurs actuellement occupés
+              const busyPlayers = new Set<string>();
+              newTargets.forEach(t => {
+                if (t.matchId) {
+                  const m = allPending.find(pm => pm.id === t.matchId);
+                  if (m) {
+                    if (m.a) busyPlayers.add(m.a);
+                    if (m.b) busyPlayers.add(m.b);
                   }
                 }
-              } else {
-                const busyPlayers = new Set<string>();
-                newTargets.forEach(t => {
-                  if (t.id !== currentTarget.id && t.matchId) {
-                    let m: any = newPoolMatches.find(pm => pm.id === t.matchId);
-                    if (!m) m = newMainBracket?.rounds.flat().find(bm => bm.id === t.matchId);
-                    if (!m) m = newConsBracket?.rounds.flat().find(bm => bm.id === t.matchId);
-                    
-                    if (m && !m.done) {
-                      if (m.a) busyPlayers.add(m.a);
-                      if (m.b) busyPlayers.add(m.b);
-                    }
-                  }
-                });
+              });
 
-                const pendingFinalMatches: {id: string, a: string, b: string}[] = [];
+              // Calculer l'avancement des poules pour l'équité
+              const poolStats = state.pools.map(pool => {
+                const doneCount = newPoolMatches.filter(m => m.poolId === pool.id && m.done).length;
+                const activeCount = newTargets.filter(t => {
+                  if (!t.matchId) return false;
+                  const m = newPoolMatches.find(pm => pm.id === t.matchId);
+                  return m && m.poolId === pool.id && !m.done;
+                }).length;
                 
-                if (newMainBracket) {
-                  newMainBracket.rounds.flat().forEach(m => {
-                    if (!m.done && m.a && m.b) pendingFinalMatches.push({id: m.id, a: m.a, b: m.b});
-                  });
-                  if (newMainBracket.thirdPlaceMatch && !newMainBracket.thirdPlaceMatch.done && newMainBracket.thirdPlaceMatch.a && newMainBracket.thirdPlaceMatch.b) {
-                    pendingFinalMatches.push({id: newMainBracket.thirdPlaceMatch.id, a: newMainBracket.thirdPlaceMatch.a, b: newMainBracket.thirdPlaceMatch.b});
+                return {
+                  pool,
+                  progress: doneCount + activeCount,
+                  hasPending: newPoolMatches.some(m => m.poolId === pool.id && !m.done)
+                };
+              });
+              const activePools = poolStats.filter(ps => ps.hasPending);
+              activePools.sort((a, b) => a.progress - b.progress);
+
+              const toAssign: { targetId: string, matchId: string }[] = [];
+              const availableMatches = allPending.filter(m => !newTargets.some(t => t.matchId === m.id));
+
+              // Remplir chaque cible libre
+              for (const target of freeTargets) {
+                let matchToAssign = null;
+
+                // Chercher d'abord un match de poule en retard
+                for (const { pool } of activePools) {
+                  const match = availableMatches.find(m => 
+                    m.isPool && m.poolId === pool.id &&
+                    (!m.a || !busyPlayers.has(m.a)) && 
+                    (!m.b || !busyPlayers.has(m.b)) &&
+                    !toAssign.some(ta => ta.matchId === m.id)
+                  );
+                  if (match) {
+                    matchToAssign = match;
+                    break;
                   }
                 }
-                
-                if (newConsBracket) {
-                  newConsBracket.rounds.flat().forEach(m => {
-                    if (!m.done && m.a && m.b) pendingFinalMatches.push({id: m.id, a: m.a, b: m.b});
-                  });
+
+                // Sinon, prendre n'importe quel match disponible (Finales, etc.)
+                if (!matchToAssign) {
+                  matchToAssign = availableMatches.find(m => 
+                    (!m.a || !busyPlayers.has(m.a)) && 
+                    (!m.b || !busyPlayers.has(m.b)) &&
+                    !toAssign.some(ta => ta.matchId === m.id)
+                  );
                 }
 
-                const nextMatch = pendingFinalMatches.find(m => 
-                  m.id !== matchId && 
-                  !busyPlayers.has(m.a) && 
-                  !busyPlayers.has(m.b)
-                );
-
-                if (nextMatch) {
-                  newTargets = newTargets.map(t => 
-                    t.id === currentTarget.id ? { ...t, matchId: nextMatch.id } : t
-                  );
-                } else {
-                  newTargets = newTargets.map(t => 
-                    t.id === currentTarget.id ? { ...t, matchId: null } : t
-                  );
+                if (matchToAssign) {
+                  toAssign.push({ targetId: target.id, matchId: matchToAssign.id });
+                  if (matchToAssign.a) busyPlayers.add(matchToAssign.a);
+                  if (matchToAssign.b) busyPlayers.add(matchToAssign.b);
                 }
               }
-            } else {
-              newTargets = newTargets.map(t => t.matchId === matchId ? { ...t, matchId: null } : t);
+
+              // Appliquer les affectations
+              toAssign.forEach(({ targetId, matchId }) => {
+                const idx = newTargets.findIndex(t => t.id === targetId);
+                if (idx !== -1) newTargets[idx] = { ...newTargets[idx], matchId };
+              });
             }
 
             return { 

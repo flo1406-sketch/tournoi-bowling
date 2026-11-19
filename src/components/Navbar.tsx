@@ -56,7 +56,6 @@ export const Navbar = () => {
     { path: '/parametrage', label: 'Paramétrage' },
     { path: '/poules', label: 'Poules' },
     { path: '/finale', label: 'Phase Finale' },
-    { path: '/cibles', label: 'Cibles' },
     { path: '/classement', label: 'Classement' },
   ];
 

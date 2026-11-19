@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { useTournamentStore } from '../store/useTournamentStore';
 import { roundName } from '../utils/tournamentLogic';
 import type { Bracket, BracketMatch, Target } from '../types';
@@ -78,7 +79,11 @@ const ThirdPlaceCard = ({ bracket }: { bracket: Bracket }) => {
             Best of {config.legsToWinMain * 2 - 1}
           </span>
         </h4>
-        {m.done && <button onClick={() => clearMatch(m.id)} className="text-[10px] text-slate-500 hover:text-red-400 underline">↺ Modifier</button>}
+        {m.done && (
+          <button onClick={() => clearMatch(m.id)} className="text-[10px] text-slate-500 hover:text-red-400 underline font-bold transition-colors">
+            ↺ Modifier
+          </button>
+        )}
       </div>
       
       <div className="flex flex-col gap-1">
@@ -155,7 +160,7 @@ const MatchCard = ({ match, matchNumber, roundIndex, totalRounds, brKey, isEditM
 
   const currentTarget = targets.find(t => t.matchId === match.id);
   const canAssignTarget = match.a && match.b && !match.done && !isEditMode;
-  const canPlay = match.a && match.b && !match.done;
+  const hasPlayers = match.a && match.b;
 
   const handleValidate = () => {
     const sa = parseInt(tempSa) || 0;
@@ -199,7 +204,7 @@ const MatchCard = ({ match, matchNumber, roundIndex, totalRounds, brKey, isEditM
         <span className={`truncate flex-1 text-sm ${match.winner === match.a ? 'text-bowling-neon font-bold' : 'text-slate-200'}`}>
           {match.a ? teams.find(t => t.id === match.a)?.name : '— (vide)'}
         </span>
-        {!isEditMode && canPlay && (
+        {!isEditMode && hasPlayers && (
           <input
             type="number"
             min="0"
@@ -218,7 +223,7 @@ const MatchCard = ({ match, matchNumber, roundIndex, totalRounds, brKey, isEditM
         <span className={`truncate flex-1 text-sm ${match.winner === match.b ? 'text-bowling-neon font-bold' : 'text-slate-200'}`}>
           {match.b ? teams.find(t => t.id === match.b)?.name : '— (vide)'}
         </span>
-        {!isEditMode && canPlay && (
+        {!isEditMode && hasPlayers && (
           <input
             type="number"
             min="0"
@@ -230,7 +235,8 @@ const MatchCard = ({ match, matchNumber, roundIndex, totalRounds, brKey, isEditM
         )}
       </div>
 
-      {!isEditMode && canPlay && (
+      {/* 👇 CORRECTION ICI : On affiche le bloc si on a des joueurs, peu importe si c'est fini ou non 👇 */}
+      {!isEditMode && hasPlayers && (
         <div className="mt-2 pt-2 border-t border-white/10 flex justify-between items-center">
           {!match.done ? (
             <>
@@ -242,7 +248,7 @@ const MatchCard = ({ match, matchNumber, roundIndex, totalRounds, brKey, isEditM
           ) : (
             <>
               <div className="text-[10px] font-bold text-green-400">Terminé</div>
-              <button onClick={() => clearMatch(match.id)} className="text-[10px] text-slate-500 hover:text-red-400 underline">
+              <button onClick={() => clearMatch(match.id)} className="text-[10px] text-slate-500 hover:text-red-400 underline font-bold transition-colors">
                 ↺ Modifier
               </button>
             </>
@@ -309,10 +315,12 @@ const BracketView = ({ bracket, brKey, isEditMode, selectedSlot, onSelectSlot, t
 };
 
 export const FinalsPage = () => {
-  const { mainBracket, consBracket, swapBracketSlots, targets, assignTarget } = useTournamentStore();
+  const { mainBracket, consBracket, swapBracketSlots, targets, assignTarget, teams } = useTournamentStore();
+  
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ brKey: string; idx: number } | null>(null);
   const [viewMode, setViewMode] = useState<'tree' | 'control'>('tree');
+  const [showQR, setShowQR] = useState(false);
 
   const handleSelectSlot = (brKey: 'main' | 'cons', idx: number) => {
     if (!isEditMode) return;
@@ -341,9 +349,14 @@ export const FinalsPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <h2 className="text-2xl font-bold">Phase finale</h2>
-        <div className="flex gap-2">
+        
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="ghost" onClick={() => setShowQR(true)}>
+            📱 QR Codes
+          </Button>
+
           <Button 
             variant={viewMode === 'control' ? 'primary' : 'ghost'} 
             onClick={() => setViewMode(viewMode === 'control' ? 'tree' : 'control')}
@@ -406,6 +419,56 @@ export const FinalsPage = () => {
               />
             </div>
           )}
+        </div>
+      )}
+
+      {showQR && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-bowling-panel border border-bowling-line rounded-xl p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-white">QR Codes - Phase Finale</h3>
+              <Button variant="danger" size="sm" onClick={() => setShowQR(false)}>Fermer</Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <h4 className="text-center text-green-400 font-bold uppercase tracking-wider mb-4 border-b border-bowling-line pb-2">Tableau Principal</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {mainBracket?.rounds.flat().filter(m => m.a && m.b && !m.done).map((m) => (
+                    <div key={m.id} className="bg-white p-2 rounded-lg flex flex-col items-center">
+                      <QRCodeSVG value={`${window.location.origin}/score/final/${m.id}`} size={100} level="M" />
+                      <div className="text-black text-[10px] text-center mt-2 font-bold leading-tight">
+                        {teams.find(t => t.id === m.a)?.name}<br/>vs<br/>{teams.find(t => t.id === m.b)?.name}
+                      </div>
+                    </div>
+                  ))}
+                  {mainBracket?.thirdPlaceMatch && mainBracket.thirdPlaceMatch.a && mainBracket.thirdPlaceMatch.b && !mainBracket.thirdPlaceMatch.done && (
+                    <div className="bg-white p-2 rounded-lg flex flex-col items-center border-2 border-orange-500">
+                      <QRCodeSVG value={`${window.location.origin}/score/final/${mainBracket.thirdPlaceMatch.id}`} size={100} level="M" />
+                      <div className="text-black text-[10px] text-center mt-2 font-bold leading-tight text-orange-600">
+                        Petite Finale<br/>
+                        {teams.find(t => t.id === mainBracket.thirdPlaceMatch?.a)?.name}<br/>vs<br/>{teams.find(t => t.id === mainBracket.thirdPlaceMatch?.b)?.name}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-center text-pink-400 font-bold uppercase tracking-wider mb-4 border-b border-bowling-line pb-2">Consolante</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {consBracket?.rounds.flat().filter(m => m.a && m.b && !m.done).map((m) => (
+                    <div key={m.id} className="bg-white p-2 rounded-lg flex flex-col items-center">
+                      <QRCodeSVG value={`${window.location.origin}/score/final/${m.id}`} size={100} level="M" />
+                      <div className="text-black text-[10px] text-center mt-2 font-bold leading-tight">
+                        {teams.find(t => t.id === m.a)?.name}<br/>vs<br/>{teams.find(t => t.id === m.b)?.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

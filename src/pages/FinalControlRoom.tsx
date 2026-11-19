@@ -24,51 +24,63 @@ const FinalMatchCard = ({ match, teams, onRelease }: { match: any, teams: any[],
   };
 
   return (
-    <div className="flex-1 flex flex-col p-2">
-      <div className={`text-center text-[9px] font-bold uppercase tracking-wider mb-2 py-1 px-1 rounded flex flex-col items-center justify-center leading-tight ${match.isMain ? 'bg-green-900/40 text-green-400' : 'bg-pink-900/40 text-pink-400'}`}>
-        <span>{match.isMain ? 'Principal' : 'Consolante'}</span>
-        <span className="text-[9px] text-white opacity-90 truncate w-full px-1">{match.label}</span>
-        <span className="text-[9px] text-bowling-neon">BO{boValue}</span>
-      </div>
-      
-      <div className="flex items-center justify-between gap-2 bg-black/20 p-1.5 rounded mb-2">
-        <span className="truncate flex-1 font-bold text-sm text-white pl-1">
-          {teams.find(t => t.id === match.a)?.name}
-        </span>
-        <input
-          type="number"
-          min="0"
-          value={sa}
-          onChange={(e) => setSa(e.target.value)}
-          className="w-10 h-8 text-center bg-bowling-dark border border-bowling-line rounded text-bowling-neon font-bold text-lg outline-none focus:border-bowling-neon [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        />
+    <div className="flex flex-col justify-between h-full p-2">
+      <div>
+        <div className={`text-center text-[10px] font-bold uppercase tracking-wider mb-2 py-1 px-1 rounded flex flex-col items-center justify-center leading-tight ${match.isMain ? 'bg-green-900/40 text-green-400' : 'bg-pink-900/40 text-pink-400'}`}>
+          <span>{match.isMain ? 'Principal' : 'Consolante'}</span>
+          <span className="text-[9px] text-white opacity-90 truncate w-full px-1">{match.label}</span>
+          <span className="text-[9px] text-bowling-neon">BO{boValue}</span>
+        </div>
+        
+        <div className="flex items-center justify-between gap-2 bg-black/20 p-1.5 rounded mb-2">
+          <span className="truncate flex-1 font-bold text-sm text-white pl-1">
+            {teams.find(t => t.id === match.a)?.name}
+          </span>
+          <input
+            type="number"
+            min="0"
+            value={sa}
+            onChange={(e) => setSa(e.target.value)}
+            className="w-10 h-8 text-center bg-bowling-dark border border-bowling-line rounded text-bowling-neon font-bold text-lg outline-none focus:border-bowling-neon [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-2 bg-black/20 p-1.5 rounded mb-3">
+          <span className="truncate flex-1 font-bold text-sm text-white pl-1">
+            {teams.find(t => t.id === match.b)?.name}
+          </span>
+          <input
+            type="number"
+            min="0"
+            value={sb}
+            onChange={(e) => setSb(e.target.value)}
+            className="w-10 h-8 text-center bg-bowling-dark border border-bowling-line rounded text-bowling-neon font-bold text-lg outline-none focus:border-bowling-neon [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+        </div>
+
+        <Button 
+          variant="primary" 
+          onClick={handleValidate}
+          className="w-full text-xs py-1.5 h-auto shadow-none"
+        >
+          ✓ Valider
+        </Button>
+
+        <div className="mt-2 text-center">
+          <button onClick={onRelease} className="text-[9px] text-slate-500 hover:text-red-400 underline decoration-dotted transition-colors">
+            Annuler le match
+          </button>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 bg-black/20 p-1.5 rounded mb-3">
-        <span className="truncate flex-1 font-bold text-sm text-white pl-1">
-          {teams.find(t => t.id === match.b)?.name}
-        </span>
-        <input
-          type="number"
-          min="0"
-          value={sb}
-          onChange={(e) => setSb(e.target.value)}
-          className="w-10 h-8 text-center bg-bowling-dark border border-bowling-line rounded text-bowling-neon font-bold text-lg outline-none focus:border-bowling-neon [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        />
-      </div>
-
-      <Button 
-        variant="primary" 
-        onClick={handleValidate}
-        className="w-full text-xs py-1.5 h-auto shadow-none"
-      >
-        ✓ Valider
-      </Button>
-
-      <div className="mt-2 text-center">
-        <button onClick={onRelease} className="text-[9px] text-slate-500 hover:text-red-400 underline decoration-dotted transition-colors">
-          Annuler le match
-        </button>
+      <div className="flex justify-center mt-2">
+        <div className="bg-white p-1 rounded">
+          <QRCodeSVG 
+            value={`${window.location.origin}/score/final/${match.id}`} 
+            size={55} 
+            level="L" 
+          />
+        </div>
       </div>
     </div>
   );
@@ -124,8 +136,8 @@ export const FinalControlRoom = () => {
       }
     });
 
-    const availableMatches = allPendingMatches.filter(m => !targets.some(t => t.matchId === m.id));
     const toAssign: { targetId: string, matchId: string }[] = [];
+    const availableMatches = allPendingMatches.filter(m => !targets.some(t => t.matchId === m.id));
 
     for (const target of freeTargets) {
       const match = availableMatches.find(m => 
@@ -141,14 +153,13 @@ export const FinalControlRoom = () => {
       }
     }
 
-    // On applique toutes les assignations d'un seul coup
     toAssign.forEach(({ targetId, matchId }) => {
       assignTarget(targetId, matchId);
     });
   };
 
   return (
-    <div className="flex flex-col gap-4 h-[calc(100vh-180px)]">
+    <div className="flex flex-col gap-4 h-full w-full overflow-hidden">
       <div className="flex-1 flex gap-2 overflow-hidden">
         {targets.map((target) => {
           const currentMatch = target.matchId ? allPendingMatches.find(m => m.id === target.matchId) : null;
@@ -187,18 +198,6 @@ export const FinalControlRoom = () => {
                       </option>
                     ))}
                   </select>
-                </div>
-              )}
-
-              {isBusy && currentMatch && (
-                <div className="p-1.5 flex justify-center bg-black/20 border-t border-bowling-line mt-auto">
-                  <div className="bg-white p-0.5 rounded">
-                    <QRCodeSVG 
-                      value={`${window.location.origin}/score/final/${currentMatch.id}`} 
-                      size={55} 
-                      level="L" 
-                    />
-                  </div>
                 </div>
               )}
             </div>
