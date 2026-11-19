@@ -71,7 +71,7 @@ export const SettingsPage = () => {
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Qualifiés par poule</label>
                 <select value={config.qualifyCount} onChange={(e) => setConfig('qualifyCount', parseInt(e.target.value))} className="input-field w-full text-lg">
-                  {[1, 2, 3].map(v => <option key={v} value={v}>{v} joueur(s)</option>)}
+                  {[1, 2, 3, 4].map(v => <option key={v} value={v}>{v} joueur(s)</option>)}
                 </select>
               </div>
               <div className="md:col-span-2">
