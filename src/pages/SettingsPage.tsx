@@ -48,10 +48,8 @@ export const SettingsPage = () => {
   };
 
   return (
-    // 👇 On enlève la limite de largeur (max-w-4xl) pour prendre toute la place 👇
     <div className="space-y-6 w-full">
       
-      {/* Grille de réglages (2 colonnes sur grand écran) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Colonne de gauche */}
@@ -71,6 +69,7 @@ export const SettingsPage = () => {
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Qualifiés par poule</label>
                 <select value={config.qualifyCount} onChange={(e) => setConfig('qualifyCount', parseInt(e.target.value))} className="input-field w-full text-lg">
+                  {/* 👇 C'EST ICI QU'ON AJOUTE LE 4 👇 */}
                   {[1, 2, 3, 4].map(v => <option key={v} value={v}>{v} joueur(s)</option>)}
                 </select>
               </div>
