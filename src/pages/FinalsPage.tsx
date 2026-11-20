@@ -79,11 +79,7 @@ const ThirdPlaceCard = ({ bracket }: { bracket: Bracket }) => {
             Best of {config.legsToWinMain * 2 - 1}
           </span>
         </h4>
-        {m.done && (
-          <button onClick={() => clearMatch(m.id)} className="text-[10px] text-slate-500 hover:text-red-400 underline font-bold transition-colors">
-            ↺ Modifier
-          </button>
-        )}
+        {m.done && <button onClick={() => clearMatch(m.id)} className="text-[10px] text-slate-500 hover:text-red-400 underline font-bold transition-colors">↺ Modifier</button>}
       </div>
       
       <div className="flex flex-col gap-1">
@@ -235,7 +231,6 @@ const MatchCard = ({ match, matchNumber, roundIndex, totalRounds, brKey, isEditM
         )}
       </div>
 
-      {/* 👇 CORRECTION ICI : On affiche le bloc si on a des joueurs, peu importe si c'est fini ou non 👇 */}
       {!isEditMode && hasPlayers && (
         <div className="mt-2 pt-2 border-t border-white/10 flex justify-between items-center">
           {!match.done ? (

@@ -49,12 +49,9 @@ export const SettingsPage = () => {
 
   return (
     <div className="space-y-6 w-full">
-      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Colonne de gauche */}
         <div className="space-y-6">
-          {/* FORMAT DES POULES */}
           <div className="panel">
             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
               <span>⚙️</span> Format des Poules
@@ -69,7 +66,7 @@ export const SettingsPage = () => {
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Qualifiés par poule</label>
                 <select value={config.qualifyCount} onChange={(e) => setConfig('qualifyCount', parseInt(e.target.value))} className="input-field w-full text-lg">
-                  {/* 👇 C'EST ICI QU'ON AJOUTE LE 4 👇 */}
+                  {/* 👇 LE 4 EST BIEN LÀ 👇 */}
                   {[1, 2, 3, 4].map(v => <option key={v} value={v}>{v} joueur(s)</option>)}
                 </select>
               </div>
@@ -80,7 +77,6 @@ export const SettingsPage = () => {
             </div>
           </div>
 
-          {/* SAUVEGARDE */}
           <div className="panel border-l-4 border-l-bowling-neon flex flex-col justify-between">
             <div>
               <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
@@ -102,9 +98,7 @@ export const SettingsPage = () => {
           </div>
         </div>
 
-        {/* Colonne de droite */}
         <div className="space-y-6">
-          {/* FORMAT PHASE FINALE */}
           <div className="panel">
             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
               <span>🏆</span> Format de la Phase Finale
@@ -123,7 +117,6 @@ export const SettingsPage = () => {
             </div>
           </div>
 
-          {/* CIBLES */}
           <div className="panel">
             <div className="flex justify-between items-center mb-6">
               <div>
@@ -147,7 +140,6 @@ export const SettingsPage = () => {
         </div>
       </div>
 
-      {/* BOUTON GÉNÉRATION (en bas, pleine largeur) */}
       <div className="panel flex flex-col md:flex-row justify-between items-center gap-4 bg-gradient-to-r from-bowling-panel to-bowling-dark border-t-4 border-t-bowling-neon">
         <div>
           <div className="text-2xl font-black text-white">

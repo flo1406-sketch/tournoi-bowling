@@ -1,13 +1,12 @@
 import { useParams, Link } from 'react-router-dom';
 import { useTournamentStore } from '../store/useTournamentStore';
 import { ScoreInput } from '../components/ScoreInput';
-import type { BracketMatch } from '../types'; // 👈 Import du type
+import type { BracketMatch } from '../types';
 
 export const ScoreEntryFinalPage = () => {
   const { matchId } = useParams();
   const { mainBracket, consBracket, teams } = useTournamentStore();
 
-  // On précise bien à TypeScript qu'on accepte null ou undefined
   let match: BracketMatch | null | undefined = mainBracket?.rounds.flat().find(m => m.id === matchId);
   let matchLabel = "Tableau Principal";
 
@@ -17,7 +16,6 @@ export const ScoreEntryFinalPage = () => {
   }
 
   if (!match && mainBracket?.thirdPlaceMatch?.id === matchId) {
-    // 👇 Le correctif est ici : on ajoute || undefined
     match = mainBracket?.thirdPlaceMatch || undefined;
     matchLabel = "Petite Finale";
   }
@@ -37,7 +35,6 @@ export const ScoreEntryFinalPage = () => {
 
   return (
     <div className="min-h-screen bg-bowling-dark p-4 flex flex-col justify-center max-w-lg mx-auto">
-      
       <div className="text-center mb-10">
         <div className={`inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-4 ${matchLabel === 'Consolante' ? 'bg-pink-900/40 text-pink-400' : 'bg-green-900/40 text-green-400'}`}>
           {matchLabel}
@@ -46,7 +43,6 @@ export const ScoreEntryFinalPage = () => {
       </div>
 
       <div className="panel border-bowling-line p-8 flex flex-col gap-6 shadow-2xl relative">
-        
         <div className="flex items-center justify-between gap-4">
           <span className="text-xl font-bold text-white flex-1 truncate">{playerA}</span>
           <div className="scale-125">
