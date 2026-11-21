@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { AuthGate } from './components/AuthGate';
 import { HomePage } from './pages/HomePage';
 import { InscriptionsPage } from './pages/InscriptionsPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -13,12 +14,16 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 👇 1. ROUTES DE SAISIE (SANS NAVBAR, SANS MENU) 👇 */}
+        {/* 👇 ROUTES PUBLIQUES (Joueurs via QR Code) - Pas de mot de passe 👇 */}
         <Route path="/score/:poolId" element={<ScoreEntryPage />} />
         <Route path="/score/final/:matchId" element={<ScoreEntryFinalPage />} />
 
-        {/* 👇 2. ROUTES DE L'ORGANISATEUR (AVEC NAVBAR) 👇 */}
-        <Route path="/" element={<Layout />}>
+        {/* 👇 ROUTES ADMIN (Protégées par mot de passe) 👇 */}
+        <Route path="/" element={
+          <AuthGate>
+            <Layout />
+          </AuthGate>
+        }>
           <Route index element={<HomePage />} />
           <Route path="inscriptions" element={<InscriptionsPage />} />
           <Route path="parametrage" element={<SettingsPage />} />
