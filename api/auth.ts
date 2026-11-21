@@ -1,4 +1,7 @@
 // api/auth.ts
+// @ts-ignore - On ignore l'erreur car Node.js est disponible côté serveur Vercel
+declare const process: any;
+
 export default function handler(req: any, res: any) {
   // On n'accepte que les requêtes POST
   if (req.method !== 'POST') {
