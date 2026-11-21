@@ -67,6 +67,32 @@ export const buildPoolAwareSlots = (
   teamIds: string[], size: number, seedsArray: number[], pools: Pool[], poolMatches: Match[], teams: Team[]
 ) => {
   const qualSet = new Set(teamIds);
+
+  // 👇 CAS SPÉCIFIQUE : 4 poules de 4 (16 joueurs). On utilise l'arbre parfait que tu as demandé.
+  if (pools.length === 4 && teamIds.length === 16) {
+    const standingsA = getPoolStandings(pools[0], poolMatches, teams);
+    const standingsB = getPoolStandings(pools[1], poolMatches, teams);
+    const standingsC = getPoolStandings(pools[2], poolMatches, teams);
+    const standingsD = getPoolStandings(pools[3], poolMatches, teams);
+
+    const getT = (st: any[], idx: number) => {
+      const id = st[idx]?.id;
+      return id && qualSet.has(id) ? id : null;
+    };
+
+    return [
+      getT(standingsA, 0), getT(standingsB, 3), // Match 1: 1er A vs 4e B
+      getT(standingsC, 1), getT(standingsD, 2), // Match 2: 2e C vs 3e D
+      getT(standingsC, 0), getT(standingsD, 3), // Match 3: 1er C vs 4e D
+      getT(standingsA, 1), getT(standingsB, 2), // Match 4: 2e A vs 3e B
+      getT(standingsB, 0), getT(standingsA, 3), // Match 5: 1er B vs 4e A
+      getT(standingsD, 1), getT(standingsC, 2), // Match 6: 2e D vs 3e C
+      getT(standingsD, 0), getT(standingsC, 3), // Match 7: 1er D vs 4e C
+      getT(standingsB, 1), getT(standingsA, 2), // Match 8: 2e B vs 3e A
+    ];
+  }
+
+  // 👇 CAS GÉNÉRIQUE (Pour les autres formats : 3 poules, 5 poules, etc.)
   const seedToSlot: Record<number, number> = {};
   seedsArray.forEach((seed, slot) => { seedToSlot[seed] = slot; });
 
@@ -188,7 +214,8 @@ export const rebuildBracket = (bracket: Bracket): Bracket => {
       }
     }
   }
-    let thirdPlaceMatch: BracketMatch | null = null;
+
+  let thirdPlaceMatch: BracketMatch | null = null;
   if (bracket.prefix === 'main' && rounds.length >= 2) {
     const semis = rounds[rounds.length - 2];
     if (semis.length === 2 && semis[0].done && semis[1].done) {
