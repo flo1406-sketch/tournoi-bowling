@@ -4,7 +4,6 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const auth = sessionStorage.getItem('app_auth');
@@ -13,30 +12,18 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError(false);
+    
+    // 👇 C'EST ICI QUE TU METS TON MOT DE PASSE 👇
+    const correctPassword = 'Bergamote2026!'; 
 
-    try {
-      // Appel sécurisé à notre fonction Vercel
-      const response = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-      });
-
-      if (response.ok) {
-        sessionStorage.setItem('app_auth', 'true');
-        setIsAuthenticated(true);
-      } else {
-        setError(true);
-        setPassword('');
-      }
-    } catch (err) {
+    if (password === correctPassword) {
+      sessionStorage.setItem('app_auth', 'true');
+      setIsAuthenticated(true);
+    } else {
       setError(true);
-    } finally {
-      setIsLoading(false);
+      setPassword('');
     }
   };
 
@@ -60,13 +47,12 @@ export const AuthGate = ({ children }: { children: React.ReactNode }) => {
               onChange={(e) => { setPassword(e.target.value); setError(false); }}
               placeholder="Mot de passe"
               className={`input-field w-full text-center text-lg tracking-widest ${error ? 'border-red-500 animate-shake' : ''}`}
-              disabled={isLoading}
               autoFocus
             />
             {error && <p className="text-red-400 text-xs text-center mt-2">Mot de passe incorrect.</p>}
           </div>
-          <button type="submit" disabled={isLoading} className="btn btn-primary w-full py-3">
-            {isLoading ? 'Vérification...' : 'Entrer'}
+          <button type="submit" className="btn btn-primary w-full py-3">
+            Entrer
           </button>
         </form>
       </div>
